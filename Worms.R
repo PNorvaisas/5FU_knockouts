@@ -4,32 +4,43 @@ library('plyr')
 library('reshape2')
 library(tidyr)
 
-scr2<-read.table('Secondary_screen_PN.csv',sep=',',quote = '"',header = TRUE)
+scr2<-read.table('Secondary_screen_PN_new.csv',sep=',',quote = '"',header = TRUE)
 scr2<-subset(scr2, ! Gene %in% c('XXXXXXX','no bacteria','empty'))
 
-scr2$MIC.1_factor<-as.factor(scr2$MIC.1)
-scr2$MIC.1<-as.numeric(as.character(scr2$MIC.1))
-scr2$MIC.2<-as.numeric(as.character(scr2$MIC.2))
-scr2$MIC_avg<-apply(scr2[,c('MIC.1','MIC.2')],1,mean)
+scr2$MIC1<-as.numeric(as.character(scr2$MIC1))
+scr2$MIC2<-as.numeric(as.character(scr2$MIC2))
+scr2$MIC3<-as.numeric(as.character(scr2$MIC3))
+scr2$MIC_avg<-apply(scr2[,c('MIC1','MIC2','MIC3')],1,mean,na.rm = TRUE)
+scr2$MIC_SD<-apply(scr2[,c('MIC1','MIC2','MIC3')],1,sd,na.rm = TRUE)
 
-corlin<-ggplot(scr2,aes(x=MIC.1,y=MIC.2))+geom_point(alpha=0.2,color='red',size=5)+stat_smooth(aes(group = 1),method = "lm")+xlab('MIC replicate 1')+ylab('MIC replicate 2')
+corlin<-ggplot(scr2,aes(x=MIC1,y=MIC2))+geom_point(alpha=0.2,color='red',size=5)+stat_smooth(aes(group = 1),method = "lm")+xlab('MIC replicate 1')+ylab('MIC replicate 2')
 corlin
 
-scr2avg<-melt(scr2,id=c('MIC_avg'),measure.vars = c('MIC.1','MIC.2'),value.name='MIC_values')
+scr2avg<-melt(scr2,id=c('Gene','MIC_avg','MIC_SD'),measure.vars = c('MIC1','MIC2','MIC3'),value.name='MIC_values')
 scr2avg$Replicates<-factor(scr2avg$variable,
-                       levels = c('MIC.1','MIC.2'),
-                       labels = c("1","2")) 
+                       levels = c('MIC1','MIC2','MIC3'),
+                       labels = c("1","2","3"))
+scr2avg$variable<-NULL
 
 
 scr2avg<-subset(scr2avg,!is.na(MIC_avg))
 comparison<-ggplot(scr2avg,aes(x=MIC_avg,y=MIC_values,color=Replicates))+geom_point(alpha=0.2,size=5)+stat_smooth(aes(group = 1),method = "lm")+xlab('MIC average')+ylab('Experimental MIC measurements')+xlim(0,100)+ylim(0,100)
 comparison<-comparison+ggtitle('Consistency of replicates in secondary screen (5-100uM 5FU)')
 comparison
-dev.copy2pdf(device=cairo_pdf,file="Consistency_scr1.pdf",width=11.69,height=8.27)
+#dev.copy2pdf(device=cairo_pdf,file="Consistency_scr1.pdf",width=11.69,height=8.27)
 
 comphist<-ggplot(scr2avg,aes(x=as.factor(MIC_avg),y=MIC_values))+geom_boxplot()+xlab('MIC average')+ylab('Experimental MIC measurements')
 comphist
-dev.copy2pdf(device=cairo_pdf,file="Consistency_scr1_hist.pdf",width=11.69,height=8.27)
+#dev.copy2pdf(device=cairo_pdf,file="Consistency_scr1_hist.pdf",width=11.69,height=8.27)
+
+limits <- aes(ymax = MIC_avg + MIC_SD, ymin=MIC_avg - MIC_SD)
+dodge <- position_dodge(width=0.1)
+scr2dist<-ggplot(scr2,aes(x=reorder(Gene, MIC_avg),y=MIC_avg))+geom_point(color='red',size=1) + geom_errorbar(limits, position=dodge, width=0.1)
+scr2dist<-scr2dist+theme(axis.text.x = element_text(angle = 90, hjust = 1,size=5))+scale_y_continuous(breaks=seq(0,100,by=10))
+scr2dist+xlab('Gene knockout')+ylab('Worm MIC for 5FU')+ggtitle('Protective properties of gene knockouts for C. elegans in 5FU exposure')
+dev.copy2pdf(device=cairo_pdf,file="Secondary_variation_SD.pdf",width=16,height=8.27)
+
+
 
 
 scr1<-read.table('Primary_screen_PN_clean.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
@@ -77,7 +88,7 @@ selection<-scr1m
 #selection<-subset(scr1m,!Gene %in% rownames(dupl))
 linkage<-ggplot(selection[!is.na(selection$Worm.development),],aes(x=FFU,y=Worm.development,color=Gene))+geom_line(alpha=0.5,size=1)
 linkage+theme(panel.background = element_rect(fill = 'white', colour = 'white'))
-dev.copy2pdf(device=cairo_pdf,file="Screen1_links.pdf",width=11.69,height=8.27)
+#dev.copy2pdf(device=cairo_pdf,file="Screen1_links.pdf",width=11.69,height=8.27)
 
 
 t2<-scr2[,c('Gene','MIC_avg')]
@@ -90,7 +101,7 @@ joined<-merge(t1,t2,all.x=TRUE,all.y=TRUE)
 
 fulllinkage<-ggplot(joined[!is.na(joined$Worm.development),],aes(x=FFU,y=Worm.development,color=Gene))+geom_line(alpha=0.5,size=1)
 fulllinkage+theme(panel.background = element_rect(fill = 'white', colour = 'white'))
-dev.copy2pdf(device=cairo_pdf,file="Joined_links.pdf",width=11.69,height=8.27)
+#dev.copy2pdf(device=cairo_pdf,file="Joined_links.pdf",width=11.69,height=8.27)
 
 
 
@@ -103,11 +114,13 @@ comp<-merge(fin,chosen,by=c('Gene'),all.x=TRUE,all.y=TRUE)
 comp$FFU.x<-NULL
 comp$Worm.development.y<-NULL
 comp$Worm.development.x<-factor(comp$Worm.development.x,levels=c('6','9'),labels=c('++','+++'))
+comp<-comp[!is.na(comp$Worm.development.x),]
 
-sixandnine<-ggplot(comp[!is.na(comp$Worm.development.x),],aes(x=Worm.development.x,y=FFU.y))+geom_boxplot(notch=TRUE)+xlab('Worm development at [5FU]=5uM')+ylab('Final MIC')
+
+sixandnine<-ggplot(comp,aes(x=FFU.y,fill=Worm.development.x))+geom_histogram(binwidth=10,position='identity',alpha=0.5)+xlab('Final MIC')+ylab('No')
 sixandnine<-sixandnine+ggtitle('Final MIC distributions based on worm development at [5FU]=5uM')
 sixandnine
-dev.copy2pdf(device=cairo_pdf,file="Final_MIC_by_5FUat5.pdf",width=11.69,height=8.27)
+#dev.copy2pdf(device=cairo_pdf,file="Final_MIC_by_5FUat5.pdf",width=11.69,height=8.27)
 
 
 allg<-unique(scr1$Gene)
@@ -134,7 +147,14 @@ dist<-dist+annotate("text", 110, 0.91, label = "90%",color='green')
 dist<-dist+annotate("text", 110, 0.96, label = "95%",color='blue')
 dist<-dist+annotate("text", 110, 0.99, label = "98%",color='red')
 dist+scale_x_continuous(breaks=c(0,10,20,30,40,50,60,70,80,90,100))
-dev.copy2pdf(device=cairo_pdf,file="Cumulative_distribution_of_MIC.pdf",width=11.69,height=8.27)
+#dev.copy2pdf(device=cairo_pdf,file="Cumulative_distribution_of_MIC.pdf",width=11.69,height=8.27)
+
+
+disth<-ggplot(mics,aes(x=MIC))+geom_histogram(binwidth=5)
+disth<-disth+ggtitle('Cumulative histogram of MIC values')
+disth
+
+
 
 atop5<-mics[mics$MIC>=5,]$Gene
 atop5<-unique(atop5[!is.na(atop5)])
