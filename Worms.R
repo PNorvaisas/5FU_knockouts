@@ -38,11 +38,11 @@ dodge <- position_dodge(width=0.1)
 scr2dist<-ggplot(scr2,aes(x=reorder(Gene, MIC_avg),y=MIC_avg))+geom_point(color='red',size=1) + geom_errorbar(limits, position=dodge, width=0.1)
 scr2dist<-scr2dist+theme(axis.text.x = element_text(angle = 90, hjust = 1,size=5))+scale_y_continuous(breaks=seq(0,100,by=10))
 scr2dist+xlab('Gene knockout')+ylab('Worm MIC for 5FU')+ggtitle('Protective properties of gene knockouts for C. elegans in 5FU exposure')
-dev.copy2pdf(device=cairo_pdf,file="Secondary_variation_SD.pdf",width=16,height=8.27)
+#dev.copy2pdf(device=cairo_pdf,file="Secondary_variation_SD.pdf",width=16,height=8.27)
 
 
 
-
+#Primary screen analysis
 scr1<-read.table('Primary_screen_PN_clean.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 scr1<-subset(scr1, ! Gene %in% c('XXXXXXX','no bact','empty','',NA))
 scr1[scr1$Gene %in% c('WT?','WT control', 'dodgy "WT"'),'Gene']<-'WT'
@@ -151,7 +151,7 @@ dist+scale_x_continuous(breaks=c(0,10,20,30,40,50,60,70,80,90,100))
 
 
 disth<-ggplot(mics,aes(x=MIC))+geom_histogram(binwidth=5)
-disth<-disth+ggtitle('Cumulative histogram of MIC values')
+disth<-disth+ggtitle('Histogram of MIC values')
 disth
 
 
