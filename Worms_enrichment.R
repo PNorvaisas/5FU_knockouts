@@ -64,20 +64,94 @@ read.GO<-function(flnm,filter=TRUE,pval='Benjamini'){
 }
 
 qbacmiq<-read.table('Data/MICs_and_bacterial_growth-Unique_clean.csv',sep=',',header=TRUE)
+
+
+unicom<-read.table('Data/MICs_Unknown_function.csv',sep=',',header=TRUE,stringsAsFactors = FALSE)
+
+
+
+
+
+
+PLP<-read.table('Data/Genes_using_PLP.csv',sep=',',header=FALSE)
+all<-subset(qbacmic,!is.na(Gene))$Gene
+PLPg<-PLP$V1
+MIC1<-subset(qbacmic,!is.na(Gene) & MIC>1)$Gene
+MIC25<-subset(qbacmic,!is.na(Gene) & MIC>2.5)$Gene
+
+
+PLPl<-list('PLP using'=as.character(PLPg),'Whole Keio library'=all,'MIC>1'=MIC1,'MIC>2.5'=MIC25)
+
+plot(Venn(PLPl),type='ellipses', doWeights = FALSE)#,type='ellipses',type='ellipses'
+dev.copy2pdf(device=cairo_pdf,file="Figures/PLP_using_enzymes.pdf",width=9,height=9)
+
+
+PLPc<-PLPl[c('PLP using','MIC>1','MIC>2.5')]
+PLP_df<-plyr::ldply(PLPc, cbind)
+PLP_df<-rename(PLP_df,c('.id'='List','1'='Gene'))
+
+
+plps<-subset(qbacmic, Gene %in% unique(PLP_df$Gene))
+plps$'PLP using'<-ifelse(plps$Gene %in% PLPc$'PLP using',TRUE,FALSE)
+plps$'MIC>1'<-ifelse(plps$Gene %in% PLPc$'MIC>1',TRUE,FALSE)
+plps$'MIC>2.5'<-ifelse(plps$Gene %in% PLPc$'MIC>2.5',TRUE,FALSE)
+plps<-plps[,c(1,19:21,2:7,9:18,8)]
+write.csv(plps,'Data/PLP_use_MIC_overlap.csv')
+
+
+
+unw<-list('Whole Keio library'=all,'Unknown function'=subset(unicom,Unknown.function=='TRUE')$Gene,'MIC>2.5'=MIC25)
+
+
+plot(Venn(unw),doEuler=TRUE, doWeights = FALSE)#,type='ellipses',type='ellipses' ,type='ellipses'  
+dev.copy2pdf(device=cairo_pdf,file="Figures/Unknown_enzymes_3sets.pdf",width=9,height=9)
+
+
+
+
+
 fitqr<-rq(NGM_D ~ NGM_C,data=qbacmicq,tau=c(0.05,0.95))
 bgli<-coefficients(fitqr)[1,][[1]]
 bgui<-coefficients(fitqr)[1,][[2]]
 bgls<-coefficients(fitqr)[2,][[1]]
 bgus<-coefficients(fitqr)[2,][[2]]
 
+fitqr2<-rq(NGM_D ~ NGM_C,data=qbacmicq,tau=c(0.10,0.90))
+bgli2<-coefficients(fitqr2)[1,][[1]]
+bgui2<-coefficients(fitqr2)[1,][[2]]
+bgls2<-coefficients(fitqr2)[2,][[1]]
+bgus2<-coefficients(fitqr2)[2,][[2]]
 
-bacres<-subset(qbacmicq,NGM_D>NGM_C*bgus+bgui)
-bacsens<-subset(qbacmicq,NGM_D<NGM_C*bgls+bgli)
 
-wormres<-subset(qbacmicq,MIC>q95)$Gene
-resmic=list('Bacteria sensitive bottom 5%'=bacsens$Gene,
-            'Bacteria resistant top 5%'=bacres$Gene,
-            'Worms resistant top 5%'=wormres)
+q05<-quantile(qbacmic$MIC,0.05,na.rm=TRUE)[[1]]
+q10<-quantile(qbacmic$MIC,0.1,na.rm=TRUE)[[1]]
+q90<-quantile(qbacmic$MIC,0.9,na.rm=TRUE)[[1]]
+q95<-quantile(qbacmic$MIC,0.95,na.rm=TRUE)[[1]]
+q99<-quantile(qbacmic$MIC,0.99,na.rm=TRUE)[[1]]
+
+
+
+bacres95<-subset(qbacmicq,NGM_D>NGM_C*bgus+bgui)$Gene
+bacsens05<-subset(qbacmicq,NGM_D<NGM_C*bgls+bgli)$Gene
+
+bacres90<-subset(qbacmicq,NGM_D>NGM_C*bgus2+bgui2)$Gene
+bacsens10<-subset(qbacmicq,NGM_D<NGM_C*bgls2+bgli2)$Gene
+
+wormres95<-subset(qbacmicq,MIC>q95)$Gene
+wormsens05<-subset(qbacmicq,MIC<q05)$Gene
+
+wormres90<-subset(qbacmicq,MIC>q90)$Gene
+wormres25<-subset(qbacmicq,MIC>2.5)$Gene
+wormsens10<-subset(qbacmicq,MIC<q10)$Gene
+
+resmic5=list('Bacteria sensitive bottom 5%'=bacsens05,
+            'Bacteria resistant top 5%'=bacres95,
+            'Worms resistant top 5%'=wormres95,
+            'Worms sensitive bottom 5%'=wormsens05)
+
+resmic10=list('Bacteria sensitive bottom 10%'=bacsens10,
+              'Bacteria resistant top 10%'=bacres90,
+             'Worms resistant MIC>2.5'=wormres25) # ,'Worms sensitive bottom 10%'=wormsens10
 
 resmic_df<-plyr::ldply(resmic, cbind)
 resmic_df<-rename(resmic_df,c('.id'='List','1'='Gene'))
@@ -87,11 +161,12 @@ rmc<-subset(qbacmic, Gene %in% unique(resmic_df$Gene))
 rmc$'Bacteria resistant top 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Bacteria resistant top 5%")$Gene,TRUE,FALSE)
 rmc$'Bacteria sensitive bottom 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Bacteria sensitive bottom 5%")$Gene,TRUE,FALSE)
 rmc$'Worms resistant top 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Worms resistant top 5%")$Gene,TRUE,FALSE)
+rmc$'Worms sensitive bottom 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Worms sensitive bottome 5%%")$Gene,TRUE,FALSE)
 rmc<-rmc[,c(1,19:21,2:7,9:18,8)]
 write.csv(rmc,'Data/Venn_Worm-Bacteria_resistance_overlap.csv')
 
-plot(Venn(resmic), doWeights = FALSE)#,type='ellipses',type='ellipses'
-dev.copy2pdf(device=cairo_pdf,file="Figures/Venn_Worm-Bacteria_resistance_overlap.pdf",width=9,height=9)
+plot(Venn(resmic10), doWeights = FALSE)#,type='ellipses'  ,type='ellipses' ,type='ellipses'
+dev.copy2pdf(device=cairo_pdf,file="Figures/Venn_Worm-Bacteria_resistance_overlap_MICover2.5_10perc.pdf",width=9,height=9)
 
 
 

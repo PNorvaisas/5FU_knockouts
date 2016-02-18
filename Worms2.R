@@ -125,33 +125,31 @@ scr1bad<-subset(scr1,Gene!=Gene.y)
 scr11na<-subset(scr1,is.na(Gene) & !is.na(Gene.y))
 scr12na<-subset(scr1,!is.na(Gene) & is.na(Gene.y))
 
-write.csv(unique(subset(scr1,!is.na(ECK))$ECK),'Unique_ECK.csv')
-write.csv(unique(subset(scr1,!is.na(JW_id))$JW_id),'Unique_JW.csv')
-write.csv(unique(subset(scr1,!is.na(bno))$bno),'Unique_bno.csv')
-write.csv(unique(subset(scr1,!is.na(Gene))$Gene),'Unique_Gene.csv')
+write.csv(unique(subset(scr1,!is.na(ECK))$ECK),'UniProt/Unique_ECK.csv')
+write.csv(unique(subset(scr1,!is.na(JW_id))$JW_id),'UniProt/Unique_JW.csv')
+write.csv(unique(subset(scr1,!is.na(bno))$bno),'UniProt/Unique_bno.csv')
+write.csv(unique(subset(scr1,!is.na(Gene))$Gene),'UniProt/Unique_Gene.csv')
 
-write.csv(scr1,'Screen1_annotated.csv')
-write.csv(scr1bad,'Screen1_bad_genes.csv')
-write.csv(keiofibad,'Full-linear_bad_genes.csv')
-write.csv(keiosibad,'Screen-linear_bad_genes.csv')
+#write.csv(scr1,'Screen1_annotated.csv')
+#write.csv(scr1bad,'Screen1_bad_genes.csv')
+#write.csv(keiofibad,'Full-linear_bad_genes.csv')
+#write.csv(keiosibad,'Screen-linear_bad_genes.csv')
 
 scr1$Gene.y<-NULL
 
 
-Unib<-read.table('Uniprot_bno.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-Unig<-read.table('Uniprot_Gene.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-Unik<-read.table('Uniprot_K12.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+Unib<-read.table('UniProt/Uniprot_bno.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+Unig<-read.table('UniProt/Uniprot_Gene.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+Unik<-read.table('UniProt/Uniprot_K12.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 
 Unib<-Unib[,c('UniACC','UniID','bno')]
 Unig<-Unig[,c('UniACC','UniID','Gene')]
 Unik<-Unik[,c('UniACC','UniID','Gene_prim')]
-#kuniprot$GENE<-kuniprot$yourlist.M2016020955VGEA9DDY
 #unimiss<-read.table('Uniprot_missing.txt',sep='\t',quote = '"',header = TRUE)
-Annot<-read.table('EColi_annotations_clean.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-#uniprot<-read.table('EColi_annotations_UniProt.csv',sep=',',quote = '"',header = TRUE)
-unisup<-read.table('Uniprot_supplement.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-unisupECK<-read.table('Uniprot_supplementECK.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-missadd<-read.table('Missing_UniACC_add.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+Annot<-read.table('UniProt/EColi_annotations_clean.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+unisup<-read.table('UniProt/Uniprot_supplement.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+unisupECK<-read.table('UniProt/Uniprot_supplementECK.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+missadd<-read.table('UniProt/Missing_UniACC_add.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 missadd[missadd=='']<-NA
 
 Annot[Annot=='Null']<-NA
@@ -447,7 +445,7 @@ mbcD<-ggplot(qbacmicq,aes(x=MIC,y=NGM_D))+geom_point(size=1)+
   stat_smooth(aes(group = 1),method = "lm")+
   geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.001,alpha=0.2,color='black')+
   geom_errorbar(aes(ymax=NGM_D+NGM_sd_D,ymin=NGM_D-NGM_sd_D),width=0.001,alpha=0.2,color='black')+
-  geom_text(aes(label=ifelse(MIC>5,Gene,'')),hjust=-0.1, vjust=-0.1,size=3,color='black')+
+  #geom_text(aes(label=ifelse(MIC>5,Gene,'')),hjust=-0.1, vjust=-0.1,size=3,color='black')+
   geom_abline(intercept=mndli,slope=mndls,alpha=0.5,color='red')+
   geom_abline(intercept=mndui,slope=mndus,alpha=0.5,color='red')+
   annotate("text", 100, mndls*100+mndli+0.005, label = "5%",color='red')+
@@ -457,8 +455,8 @@ mbcD<-ggplot(qbacmicq,aes(x=MIC,y=NGM_D))+geom_point(size=1)+
   annotate('text',x = 75, y = 0.25, label = lm_eqn(fitD), parse = TRUE)
 mbcD
 #dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-NGMTreatment_bac_growth_Starving-color.pdf",width=9,height=9)
-dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-NGMTreatment_bac_growth.pdf",width=9,height=9)
-
+#dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-NGMTreatment_bac_growth.pdf",width=9,height=9)
+dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-NGMTreatment_bac_growth_NoLabels.pdf",width=9,height=9)
 
 fitC<-lm(NGM_C ~ MIC,qbacmicq)
 fitNCqr<-rq(NGM_C ~ MIC,data=qbacmicq,tau=c(0.05,0.95))
@@ -471,7 +469,7 @@ mbcC<-ggplot(qbacmicq,aes(x=MIC,y=NGM_C))+geom_point(size=1)+stat_smooth(aes(gro
   xlim(0,100)+ylim(0,0.3)+
   geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.001,alpha=0.2,color='black')+
   geom_errorbar(aes(ymax=NGM_C+NGM_sd_C,ymin=NGM_C-NGM_sd_C),width=0.001,alpha=0.2,color='black')+
-  geom_text(aes(label=Gene),hjust=-0.1, vjust=-0.1,size=3,color='black')+
+  #geom_text(aes(label=Gene),hjust=-0.1, vjust=-0.1,size=3,color='black')+
   geom_abline(intercept=mncli,slope=mncls,alpha=0.5,color='red')+
   geom_abline(intercept=mncui,slope=mncus,alpha=0.5,color='red')+
   annotate("text", 100, mncls*100+mncli+0.005, label = "5%",color='red')+
@@ -480,7 +478,8 @@ mbcC<-ggplot(qbacmicq,aes(x=MIC,y=NGM_C))+geom_point(size=1)+stat_smooth(aes(gro
   annotate('text',x = 75, y = 0.3, label = lm_eqn(fitC), parse = TRUE)
 mbcC
 #dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-NGMControl_bac_growth_Starving-color.pdf",width=9,height=9)
-dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-NGMControl_bac_growth.pdf",width=9,height=9)
+#dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-NGMControl_bac_growth.pdf",width=9,height=9)
+dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-NGMControl_bac_growth_NoLabels.pdf",width=9,height=9)
 
 fitLB <- lm(LB_22hr ~ MIC, data=qbacmicq)
 fitLBqr<-rq(LB_22hr ~ MIC,data=qbacmicq,tau=c(0.05,0.95))
@@ -492,7 +491,7 @@ mlbus<-coefficients(fitLBqr)[2,][[2]]
 mbcLB<-ggplot(qbacmicq,aes(x=MIC,y=LB_22hr))+geom_point(size=1)+
   stat_smooth(aes(group = 1),method = "lm")+xlim(0,100)+
   geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.001,alpha=0.2,color='black')+
-  geom_text(aes(label=ifelse(MIC>5,Gene,'')),hjust=-0.1, vjust=-0.1,size=3,color='black')+
+  #geom_text(aes(label=ifelse(MIC>5,Gene,'')),hjust=-0.1, vjust=-0.1,size=3,color='black')+
   geom_abline(intercept=mlbli,slope=mlbls,alpha=0.5,color='red')+
   geom_abline(intercept=mlbui,slope=mlbus,alpha=0.5,color='red')+
   annotate("text", 100, mlbls*100+mlbli+0.02, label = "5%",color='red')+
@@ -501,8 +500,8 @@ mbcLB<-mbcLB+ggtitle('Strain growth in LB 22hr OD - Control')+xlab('MIC [5FU], u
 mbcLB+annotate('text',x = 75, y = 1.1, label = lm_eqn(fitLB), parse = TRUE)
 #dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-LB22hr_bac_growth_Starving-color.pdf",width=9,height=9)
 #mbcLB<-mbcLB+geom_hline(yintercept=blqq05,color='red',alpha=0.5,linetype='longdash')+geom_hline(yintercept=blqq95,color='red',alpha=0.5,linetype='longdash')
-dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-LB22hr_bac_growth.pdf",width=9,height=9)
-
+#dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-LB22hr_bac_growth.pdf",width=9,height=9)
+dev.copy2pdf(device=cairo_pdf,file="Figures/MIC-LB22hr_bac_growth_NoLabels.pdf",width=9,height=9)
 
 mbcMOPS<-ggplot(qbacmic,aes(x=MIC,y=MOPS_24hr,color=Starving))+geom_point(size=2)+stat_smooth(aes(group = 1),method = "lm")+xlim(0,100)
 mbcMOPS<-mbcMOPS+geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.001,alpha=0.2,color='black')#+geom_errorbar(aes(ymax=NGM_C+NGM_sd_C,ymin=NGM_C-NGM_sd_C),width=0.001,alpha=0.2)
@@ -542,9 +541,9 @@ dist<-dist+annotate("text", 180, 0.96, label = "95%",color='blue')
 dist<-dist+annotate("text", 180, 1, label = "99%",color='red')
 dist<-dist+scale_y_continuous(limits=c(0,1), labels = scales::percent,breaks=seq(0,1,by=0.1))
 #dist<-dist+scale_x_continuous(breaks=seq(0,100,by=5))
-dist<-dist+scale_x_log10(breaks=seq(0,100,by=10))
+dist<-dist+scale_x_log10(breaks=c(0,2.5,5,10,20,30,40,50,100))
 dist+ylab('')+xlab('log10(MIC [5FU], uM)')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
-dev.copy2pdf(device=cairo_pdf,file="Figures/Cumulative_distribution_of_MIC.pdf",width=9,height=9)
+dev.copy2pdf(device=cairo_pdf,file="Figures/Cumulative_distribution_of_MIC_adjusted-x-scale.pdf",width=9,height=9)
 
 
 disth<-ggplot(qbacmic,aes(x=MIC))+geom_histogram(binwidth=5)
