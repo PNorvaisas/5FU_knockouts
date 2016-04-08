@@ -62,53 +62,31 @@ scr1r[match(timfix$Index,scr1r$Index),'Gene']<-timfix$Gene_fix
 scr1r$Index<-NULL
 
 
-keioinfo<-read.table('Keio_linear_old.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-keioinfo$Gene<-keioinfo$gene.name
-keioinfo$ECK<-keioinfo$ECK.number
-keioinfo$bno<-keioinfo$Escherichia.coli.MG1655.B.id
-keioinfo$gene.name<-NULL
-keioinfo$Escherichia.coli.MG1655.B.id<-NULL
-keioinfo$ECK.number<-NULL
-keiolin<-read.table('Keio_linear.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-keiolin[keiolin==0]<-NA
+# 
+# 
+# keiofi<-merge(keiofull,keioinfo,by=c('Plate','Well'),all.x=TRUE,all.y=TRUE)
+# keiofi<-keiofi[,colnames(keiofi)[c(1:2,6,14,7,10,13,15:16)]]
+# keiofibad<-subset(keiofi[keiofi$Gene.x!=keiofi$Gene.y,],!is.na(Plate))
+# keiosf<-merge(scr1r,keiofull,by=c('Plate','Well'),all.x=TRUE,all.y=TRUE)
+# keiosfbad<-subset(keiosf[keiosf$Gene.x!=keiosf$Gene.y,],!is.na(Plate))
+# keiosi<-merge(scr1r,keioinfo,by=c('Plate','Well'),all.x=TRUE,all.y=TRUE)
+# keiosi<-keiosi[,colnames(keiosi)[c(1:3,14,10)]]
+# keiosibad<-subset(keiosi[keiosi$Gene.x!=keiosi$Gene.y,],!is.na(Plate))
 
-kg<-keiolin[,colnames(keiolin)[c(1:3,28:39)]]
-colnames(kg)<-gsub('G','',colnames(kg))
-kj<-keiolin[,colnames(keiolin)[c(1:3,16:27)]]
-colnames(kj)<-gsub('J','',colnames(kj))
+#Annotations fixed
 
-kgm<-melt(kg,id=colnames(kg)[1:3],variable.name = 'Column',value.name='Gene')
-kjm<-melt(kj,id=colnames(kj)[1:3],variable.name = 'Column',value.name='JW_id')
-
-keiofull<-merge(kgm,kjm,by=c('Plate','Row','Index','Column'))
-
-keiofull$Well<-do.call(paste, c(keiofull[c("Row", "Column")], sep = ""))
-keiofull[grep('JW',keiofull$JW_id,invert=TRUE),'JW_id']<-NA
-
-keioinfc<-ddply(keioinfo, .(JW_id), summarise, bno=paste(unique(bno),collapse='/'), ECK=paste(unique(ECK),collapse='/'), Comment=paste(unique(Comment),collapse='/') )
-
-keioall<-merge(keiofull,keioinfc,by='JW_id',all.x=TRUE)
-
-write.csv(keioall,'Data/Keio_plate_layout_linearised_annotated.csv')
+keioall<-read.table('../Keio_library/Keio_library_fully_annotated.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+keioall$X<-NULL
+scr1<-merge(scr1r,keioall,by.x=c('Plate','Well'),by.y=c('Plate','Well'),all.x=TRUE)
 
 
-keiofi<-merge(keiofull,keioinfo,by=c('Plate','Well'),all.x=TRUE,all.y=TRUE)
-keiofi<-keiofi[,colnames(keiofi)[c(1:2,6,14,7,10,13,15:16)]]
-keiofibad<-subset(keiofi[keiofi$Gene.x!=keiofi$Gene.y,],!is.na(Plate))
-keiosf<-merge(scr1r,keiofull,by=c('Plate','Well'),all.x=TRUE,all.y=TRUE)
-keiosfbad<-subset(keiosf[keiosf$Gene.x!=keiosf$Gene.y,],!is.na(Plate))
-keiosi<-merge(scr1r,keioinfo,by=c('Plate','Well'),all.x=TRUE,all.y=TRUE)
-keiosi<-keiosi[,colnames(keiosi)[c(1:3,14,10)]]
-keiosibad<-subset(keiosi[keiosi$Gene.x!=keiosi$Gene.y,],!is.na(Plate))
-
-scr1<-merge(scr1r,keioall[,c('Plate','Well','Gene','JW_id','ECK','bno','Comment')],by.x=c('Plate','Well'),by.y=c('Plate','Well'),all.x=TRUE)
 scr1$Gene<-scr1$Gene.x
 scr1$Gene.x<-NULL
 
 #scr1[scr1$Gene!='WT' & is.na(scr1$JW_id),c('JW_id','ECK','bno','Comment')]<-keioall[match(scr1[scr1$Gene!='WT' & is.na(scr1$JW_id),]$Gene,keioall$Gene),c('JW_id','ECK','bno','Comment')]
 
 #Clean WT
-scr1<-scr1[,colnames(scr1)[c(1:2,12,7:10,3:6,11)]]
+scr1<-scr1[,colnames(scr1)[c(1:2,17,7:15,3:6,16)]]
 
 #scr1[scr1$Gene=='WT' & !is.na(scr1$JW_id),c('JW_id','ECK','bno')]<-NA # & !is.na(scr1$ECK) & !is.na(scr1$bno)
 scr1$JW_id<-ifelse(!is.na(scr1$JW_id) & scr1$Gene == 'WT', NA, scr1$JW_id)
@@ -125,10 +103,10 @@ scr1bad<-subset(scr1,Gene!=Gene.y)
 scr11na<-subset(scr1,is.na(Gene) & !is.na(Gene.y))
 scr12na<-subset(scr1,!is.na(Gene) & is.na(Gene.y))
 
-write.csv(unique(subset(scr1,!is.na(ECK))$ECK),'UniProt/Unique_ECK.csv')
-write.csv(unique(subset(scr1,!is.na(JW_id))$JW_id),'UniProt/Unique_JW.csv')
-write.csv(unique(subset(scr1,!is.na(bno))$bno),'UniProt/Unique_bno.csv')
-write.csv(unique(subset(scr1,!is.na(Gene))$Gene),'UniProt/Unique_Gene.csv')
+# write.csv(unique(subset(scr1,!is.na(ECK))$ECK),'UniProt/Unique_ECK.csv')
+# write.csv(unique(subset(scr1,!is.na(JW_id))$JW_id),'UniProt/Unique_JW.csv')
+# write.csv(unique(subset(scr1,!is.na(bno))$bno),'UniProt/Unique_bno.csv')
+# write.csv(unique(subset(scr1,!is.na(Gene))$Gene),'UniProt/Unique_Gene.csv')
 
 #write.csv(scr1,'Screen1_annotated.csv')
 #write.csv(scr1bad,'Screen1_bad_genes.csv')
@@ -137,46 +115,6 @@ write.csv(unique(subset(scr1,!is.na(Gene))$Gene),'UniProt/Unique_Gene.csv')
 
 scr1$Gene.y<-NULL
 
-
-Unib<-read.table('UniProt/Uniprot_bno.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-Unig<-read.table('UniProt/Uniprot_Gene.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-Unik<-read.table('UniProt/Uniprot_K12.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-
-Unib<-Unib[,c('UniACC','UniID','bno')]
-Unig<-Unig[,c('UniACC','UniID','Gene')]
-Unik<-Unik[,c('UniACC','UniID','Gene_prim')]
-#unimiss<-read.table('Uniprot_missing.txt',sep='\t',quote = '"',header = TRUE)
-Annot<-read.table('UniProt/EColi_annotations_clean.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-unisup<-read.table('UniProt/Uniprot_supplement.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-unisupECK<-read.table('UniProt/Uniprot_supplementECK.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-missadd<-read.table('UniProt/Missing_UniACC_add.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-missadd[missadd=='']<-NA
-
-Annot[Annot=='Null']<-NA
-Unig[Unig=='Null']<-NA
-Unib[Unib=='Null']<-NA
-Unik[Unik=='Null']<-NA
-unisup[unisup=='Null']<-NA
-unisupECK[unisupECK=='Null']<-NA
-missadd[missadd=='Null']<-NA
-
-scr1$EG<-NA
-scr1$GI<-NA
-scr1$UniACC<-NA
-
-
-
-scr1[,c('UniACC','EG','GI')]<-Annot[match(scr1$bno,Annot$bno),c('SP','EG','GI')]
-scr1[is.na(scr1$UniACC),c('UniACC','EG','GI')]<-Annot[match(subset(scr1,is.na(UniACC))$JW_id,Annot$JW_id),c('SP','EG','GI')]
-scr1[is.na(scr1$UniACC),c('UniACC','EG','GI')]<-Annot[match(subset(scr1,is.na(scr1$UniACC))$ECK,Annot$ECK),c('SP','EG','GI')]
-scr1[is.na(scr1$UniACC),c('UniACC','EG','GI')]<-Annot[match(subset(scr1,is.na(scr1$UniACC))$Gene,Annot$Gene),c('SP','EG','GI')]
-scr1[is.na(scr1$UniACC),c('UniACC')]<-Unib[match(toupper(subset(scr1,is.na(scr1$UniACC))$bno),Unib$bno),c('UniACC')]
-scr1[is.na(scr1$UniACC),c('UniACC')]<-Unig[match(toupper(subset(scr1,is.na(scr1$UniACC))$Gene),Unig$Gene),c('UniACC')]
-scr1[is.na(scr1$UniACC),c('UniACC')]<-unisup[match(toupper(subset(scr1,is.na(scr1$UniACC))$bno),unisup$Gene),c('ACC')]
-scr1[is.na(scr1$UniACC),c('UniACC')]<-Unik[match(subset(scr1,is.na(scr1$UniACC))$Gene,Unik$Gene_prim),c('UniACC')]
-scr1[is.na(scr1$UniACC),c('UniACC')]<-unisupECK[match(subset(scr1,is.na(scr1$UniACC))$Gene,unisupECK$Gene.x),c('SP')]
-scr1[is.na(scr1$UniACC),c('EG','UniACC')]<-missadd[match(subset(scr1,is.na(scr1$UniACC))$Gene,missadd$Gene),c('EG','UniACC')]
-scr1[scr1=='Null']<-NA
 
 missingUniACC<-subset(scr1,is.na(UniACC) & !is.na(Gene) & Gene!='WT')
 write.csv(missingUniACC,'Missing_UniACC.csv')
@@ -292,6 +230,8 @@ write.csv(allredo,'Data/All_redo_new.csv')
 #mc<-data.frame('Gene'=unique(scr1$Gene))
 #mc<-merge(mc,scr1[,c('Gene','Plate','Well','X0','X1','X2.5','X5')],by=c('Gene'),all.x=TRUE)
 
+
+#Wrong gene indices!!
 mics<-merge(scr1[,colnames(scr1)[c(1:6,12:14,11)]],scr2avg[,c('Gene','MIC_avg','MIC_sd','Starving')],by=c('Gene'),all.x=TRUE)
 colnames(mics)<-c('Gene','Plate','Well','JW_id','ECK','bno','EG','GI','UniACC','Comment','MIC','MIC_sd','Starving')
 
@@ -300,11 +240,17 @@ subset(scr1,Gene %in% c('yedN','ubiX'))
 mics[mics$Gene %in% setdiff(ones,c('yedN')),'MIC' ]<-1
 mics[mics$Gene %in% twofives,'MIC' ]<-2.5
 mics[mics$Gene %in% fivers,'MIC' ]<-5
+
+
 #Uncomment if you want to avoid bias
+#Will have to be changd with values from supplementary screen
 mics[mics$Gene %in% greater,'MIC' ]<-10
 mics$Starving<-as.character(mics$Starving)
 mics$Starving<-ifelse(is.na(mics$Starving),'No',mics$Starving)
 mics$Starving<-factor(mics$Starving,levels=c('Yes','No'),labels=c('Yes','No'))
+
+#Add new data! Merge by gene name
+
 
 
 
@@ -368,6 +314,8 @@ bgui<-coefficients(fitqr)[1,][[2]]
 bgls<-coefficients(fitqr)[2,][[1]]
 bgus<-coefficients(fitqr)[2,][[2]]
 
+#qbacmicq - no duplicates
+qbacmicq<-subset(qbacmic,! Gene %in% c('atpB','atpE','atpF','atpG','aceE','lpd','glnA'))
 
 bacres<-subset(qbacmicq,NGM_D>NGM_C*bgus+bgui)
 bacsens<-subset(qbacmicq,NGM_D<NGM_C*bgls+bgli)
@@ -423,7 +371,7 @@ dev.copy2pdf(device=cairo_pdf,file="Figures/Bac_growth_disribution.pdf",width=9,
 
 #qbacmicq<-qbacmic
 
-qbacmicq<-subset(qbacmic,! Gene %in% c('atpB','atpE','atpF','atpG','aceE','lpd','glnA'))
+
 
 
 bdqq05<-quantile(qbacmicq$NGM_D,0.05,na.rm=TRUE)[[1]]
