@@ -26,6 +26,7 @@ lm_eqn = function(m) {
 
 
 evalmic=function(m){
+  print(m[1][1])
   m<-as.numeric(m)
   mic=1
   if (!is.na(m[[3]]) & m[[3]]>0) {
@@ -39,6 +40,24 @@ evalmic=function(m){
   }
   return(mic)
 }
+
+evalmic2=function(all){
+  for (i in rownames(all)){
+    mic=1
+    if (!is.na(all[i,'1']) & all[i,'1']>0) {
+      mic=2.5
+    }
+    if (!is.na(all[i,'2.5']) & all[i,'2.5']>0) {
+      mic=5
+    }
+    if (!is.na(all[i,'5']) & all[i,'5']>0) {
+      mic=5
+    }
+    all[i,'MIC']<-mic
+  }
+  return(all)
+}
+
 
 #Primary screen analysis
 #scr1r<-read.table('Primary_screen_raw_fixed.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
@@ -78,25 +97,14 @@ scr1r[match(timfix$Index,scr1r$Index),'Gene']<-timfix$Gene_fix
 scr1r$Index<-NULL
 
 scr1<-rename(scr1r, c("X0"="0", "X1"="1", "X2.5"="2.5", "X5"="5"))
-
-
-allg<-unique(scr1$Gene)
-concs<-c(0,1,2.5,5)
-
-dupl<-as.factor(unique(scr1[which(duplicated(scr1$Gene)),]$Gene))
-dupl<-dupl[!dupl%in%c('WT',NA)]
-duplicates<-subset(subset(scr1[order(scr1$Gene),], Gene %in% dupl ),Gene!='WT')
-
-scr1m<-melt(scr1r[,c('Gene','0','1','2.5','5')],id='Gene',variable.name = 'Measure',value.name='Score')
+scr1m<-melt(scr1[,c('Gene','Plate','Well','0','1','2.5','5')],id=c('Gene','Plate','Well'),variable.name = 'Measure',value.name='Score')
 scr1m$Measure<-as.character(scr1m$Measure)
 scr1m$Score<-as.character(scr1m$Score)
-
-
 
 #Secondary screen
 scr2<-read.table('Secondary_screen_PN_new.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
 scr2$Starving<-as.factor(scr2$Starving)
-scr2m<-melt(scr2[,c('Gene','MIC1','MIC2','MIC3')],id='Gene',variable.name = 'Replicate',value.name='MIC')
+scr2m<-melt(scr2[,c('Gene','Plate','Well','MIC1','MIC2','MIC3')],id=c('Gene','Plate','Well'),variable.name = 'Replicate',value.name='MIC')
 scr2m$Replicate<-as.character(scr2m$Replicate)
 scr2m$MIC<-as.character(scr2m$MIC)
 
@@ -108,10 +116,12 @@ scr2m$MIC<-as.character(scr2m$MIC)
 
 
 #Supplemented screen 3
-
 scr3Scores<-read.table('3rd_screen_Scores.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
-scr3Scores<-scr3Scores[,c('Gene',"X0.1","X0.2","X0.3","X1.1","X1.2","X1.3","X2.5.1","X2.5.2","X2.5.3","X5.1","X5.2","X5.3")]
-scr3Sm<-melt(scr3MScores,id='Gene',variable.name = 'Measure',value.name='Score')
+scr3Scores<-rename(scr3Scores, c("Keio.Plate.no."="Plate", "Position"="Well", "Well"="NWell"))
+scr3Sm<-melt(scr3Scores[,c('Gene','Plate','Well',
+                           "X0.1","X0.2","X0.3","X1.1","X1.2","X1.3",
+                           "X2.5.1","X2.5.2","X2.5.3","X5.1","X5.2","X5.3")],
+             id=c('Gene','Plate','Well'),variable.name = 'Measure',value.name='Score')
 scr3Sm$Measure<-as.character(scr3Sm$Measure)
 scr3Sm$Score<-as.character(scr3Sm$Score)
 scr3Sm[scr3Sm$Measure %in% c('X0.1','X0.2','X0.3'),'Measure']<-'0'
@@ -124,8 +134,8 @@ scr3Sm[scr3Sm$Score %in% c('1'),'Score']<-'3'
 
 
 scr3Mics<-read.table('3rd_screen_MICs.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
-scr3Mics<-scr3Mics[,c('Gene','MIC.1','MIC.2','MIC.3')]
-scr3Micsm<-melt(scr3Mics,id='Gene',variable.name = 'Replicate',value.name='MIC')
+scr3Mics<-rename(scr3Mics, c("Keio.Plate.no."="Plate", "Position"="Well", "Well"="NWell"))
+scr3Micsm<-melt(scr3Mics[,c('Gene','Plate','Well','MIC.1','MIC.2','MIC.3')],id=c('Gene','Plate','Well'),variable.name = 'Replicate',value.name='MIC')
 scr3Micsm$Replicate<-as.character(scr3Micsm$Replicate)
 scr3Micsm$MIC<-as.character(scr3Micsm$MIC)
 
@@ -137,12 +147,17 @@ scr3$MIC<-as.numeric(scr3$MIC)
 scr3avg<-ddply(scr3, .(Gene), summarise, MIC_avg=mean(MIC,na.rm = TRUE),MIC_sd=sd(MIC,na.rm = TRUE))
 
 
+sc1g<-unique(scr1$Gene)
+sc2g<-unique(scr2$Gene)
+sc3Sg<-unique(scr3Scores$Gene)
+sc3Mg<-unique(scr3Mics$Gene)
+
 
 allscores<-merge(scr1m,scr3Sm,all.x=TRUE,all.y=TRUE)
 allmics<-merge(scr2m,scr3Micsm,all.x=TRUE,all.y=TRUE)
 
 allscores<-subset(allscores,! is.na(Gene) & Gene!='' & Score!='')
-allmics<-subset(allmics,! is.na(Gene) & Gene!='' & Score!='')
+allmics<-subset(allmics,! is.na(Gene) & Gene!='' & MIC!='')
 
 allscores[allscores$Gene=='WT cont','Gene']<-'WT'
 allscores[allscores$Gene=='upp cont','Gene']<-'upp'
@@ -157,126 +172,35 @@ micss<-subset(allmics,!(is.na(as.numeric(allmics$MIC))))
 micss$MIC<-as.numeric(micss$MIC)
 
 
-scores_avg<-ddply(scores, .(Gene,Measure), summarise, Score_avg=mean(Score,na.rm = TRUE),Score_sd=sd(Score,na.rm = TRUE))
+scores_avg<-ddply(scores, .(Gene,Plate,Well,Measure), summarise, Score_avg=mean(Score,na.rm = TRUE),Score_sd=sd(Score,na.rm = TRUE))
 
-mics_avg<-ddply(micss, .(Gene), summarise, MIC_avg=mean(MIC,na.rm = TRUE),MIC_sd=sd(MIC,na.rm = TRUE))
-
-all<-dcast(scores_avg,Gene ~Measure,mean,value.var = c('Score_avg'))
+mics_avg<-ddply(micss, .(Gene,Plate,Well), summarise, MIC_avg=mean(MIC,na.rm = TRUE),MIC_sd=sd(MIC,na.rm = TRUE))
 
 
-all$MIC<-apply(scoresc,1,evalmic)
-
-allfull<-merge(all,mics_avg,by='Gene',all.x=TRUE)
-allfull$MIC<-ifelse(allfull$MIC_avg>allfull$MIC,allfull$MIC_avg,allfull$MIC)
+all<-dcast(scores_avg,Gene+Plate+Well ~Measure,mean,value.var = c('Score_avg'))
 
 
 
+all$MIC<-evalmic2(all)$MIC
 
-sc1g<-unique(scr1$Gene)
-sc2g<-unique(scr2$Gene)
-sc3Mg<-unique(scr3Mix$Gene)
-sc3JMg<-unique(scr3JMics$Gene)
+#all$MIC<-apply(all,1,evalmic)
+
+allfull<-merge(all,mics_avg,by=c('Gene','Plate','Well'),all.x=TRUE)
+allfull$MIC<-ifelse(!is.na(allfull$MIC_avg) & allfull$MIC_avg>allfull$MIC,allfull$MIC_avg,allfull$MIC)
+allfull$MIC_avg<-NULL
 
 
 
 
-ones<-subset(scr1,(scr1$'X0'>0 | scr1$'X0'==0 | is.na(scr1$'X0')) & (scr1$'X1'==0 | is.na(scr1$'X1')) & (scr1$'X2.5'==0 | is.na(scr1$'X2.5')) & (scr1$'X5'==0 | is.na(scr1$'X5')) )$Gene #scr1$'X2.5'==0 & (scr1$'X2.5'==0 | is.na(scr1$'X2.5')) & (scr1$'X5'==0 | is.na(scr1$'X5')) 
-ones<-unique(ones)
 
-twofives<-subset(scr1,(scr1$'X0'>0 | is.na(scr1$'X0')) & (scr1$'X1'>0 | is.na(scr1$'X1')) & scr1$'X2.5'==0 &  scr1$'X5'==0)$Gene
-twofives<-setdiff(unique(twofives),ones)#unique(twofives)#
 #Check for duplicates
 
-fivers<-subset(scr1,scr1$'X0'>0 & scr1$'X1'>0 & scr1$'X2.5'>0 &  scr1$'X5'==0)$Gene
-fivers<-unique(fivers)#setdiff(unique(fivers),twofives)
-#Check for duplicates
+allg<-unique(scr1$Gene)
+concs<-c(0,1,2.5,5)
 
-
-intersect(ones,twofives)
-intersect(twofives,fivers)
-intersect(ones,fivers)
-
-
-scr1done<-union(ones,twofives)
-scr2done<-unique(scr2$Gene)
-
-missing<-setdiff(allg,scr1done)
-missing<-setdiff(missing,scr2done)
-missing<-setdiff(missing,fivers)
-
-
-## 9 0 0 3 pattern
-## Needs discussion
-dubious1<-subset(scr1,Gene %in% missing & (scr1$'X0'==9 | is.na(scr1$'X0')) &scr1$'X1'==0 & scr1$'X2.5'==0 & scr1$'X5'==3)$Gene
-## 9 0 3 0 pattern
-## Needs discussion
-dubious2<-subset(scr1,Gene %in% missing & (scr1$'X0'==9 | is.na(scr1$'X0')) &scr1$'X1'==0 & scr1$'X2.5'==3 & scr1$'X5'==0)$Gene
-dubiousall<-union(dubious1,dubious2)
-emissing<-setdiff(missing,dubiousall)
-#Dubious retested at 1uM - 5uM and greater depending on the results
-#Greater tested at greater than 5uM
-
-
-greater<-subset(scr1,Gene %in% emissing & (scr1$'X0'>0 | is.na(scr1$'X0')) & scr1$'X2.5'>0 & ( scr1$'X5'>0 | is.na(scr1$'X5')))$Gene
-mmissing<-setdiff(emissing,greater)
-
-almost5<-subset(scr1,Gene %in% mmissing & scr1$'X0'>0 & scr1$'X1'>0 & scr1$'X2.5'==0 & scr1$'X5'>0)$Gene
-mmissing<-setdiff(mmissing,almost5)
-
-
-
-allredo<-subset(scr1,Gene %in% missing)
-allredo$Details<-NULL
-allredo$Faults<-NULL
-
-allredo[allredo$Gene %in% almost5,'Reason' ]<-'Inconsistent for replicates'
-allredo[allredo$Gene %in% mmissing,'Reason' ]<-'Inconsistent or missing'
-allredo[allredo$Gene %in% dubiousall,'Reason' ]<-'Sporadic development'
-allredo[allredo$Gene %in% fivers,'Reason' ]<-'Assumed MIC=5'
-allredo[allredo$Gene %in% greater,'Reason' ]<-'Needs testing at [5FU]>5uM'
-allredo[allredo$Gene=='yjgX','Reason' ]<-'Inconsistent results in replicates'
-
-allredo[allredo$Gene %in% almost5,'Suggested concentration range' ]<-'1-5uM or 5-100uM'
-allredo[allredo$Gene %in% mmissing,'Suggested concentration range' ]<-'1-5uM and possibly more'
-allredo[allredo$Gene %in% dubiousall,'Suggested concentration range' ]<-'1-5uM and possibly more'
-allredo[allredo$Gene %in% fivers,'Suggested concentration range' ]<-'>5uM'
-allredo[allredo$Gene %in% greater,'Suggested concentration range' ]<-'5-100uM'
-allredo[allredo$Gene=='yjgX','Suggested concentration range' ]<-'1-5uM and possibly more'
-
-#What needs to be redone
-#write.csv(subset(scr1,Gene %in% mmissing),'Missing_0-5.csv')
-#write.csv(subset(scr1,Gene %in% dubiousall),'Sporadic_2.5-5.csv')
-#write.csv(subset(scr1,Gene %in% greater),'Greater_5-100.csv')
-#write.csv(subset(scr1,Gene %in% fivers),'Fivers_5-100.csv')
-
-
-write.csv(allredo,'Data/All_redo_new.csv')
-
-
-#mc<-data.frame('Gene'=unique(scr1$Gene))
-#mc<-merge(mc,scr1[,c('Gene','Plate','Well','X0','X1','X2.5','X5')],by=c('Gene'),all.x=TRUE)
-
-
-#Wrong gene indices!!
-mics<-merge(scr1[,colnames(scr1)[c(1:6,12:14,11)]],scr2avg[,c('Gene','MIC_avg','MIC_sd','Starving')],by=c('Gene'),all.x=TRUE)
-colnames(mics)<-c('Gene','Plate','Well','JW_id','ECK','bno','EG','GI','UniACC','Comment','MIC','MIC_sd','Starving')
-
-subset(scr1,Gene %in% c('yedN','ubiX'))
-
-mics[mics$Gene %in% setdiff(ones,c('yedN')),'MIC' ]<-1
-mics[mics$Gene %in% twofives,'MIC' ]<-2.5
-mics[mics$Gene %in% fivers,'MIC' ]<-5
-
-
-#Uncomment if you want to avoid bias
-#Will have to be changd with values from supplementary screen
-mics[mics$Gene %in% greater,'MIC' ]<-10
-mics$Starving<-as.character(mics$Starving)
-mics$Starving<-ifelse(is.na(mics$Starving),'No',mics$Starving)
-mics$Starving<-factor(mics$Starving,levels=c('Yes','No'),labels=c('Yes','No'))
-
-#Add new data! Merge by gene name
-
+dupl<-as.factor(unique(scr1[which(duplicated(scr1$Gene)),]$Gene))
+dupl<-dupl[!dupl%in%c('WT',NA)]
+duplicates<-subset(subset(scr1[order(scr1$Gene),], Gene %in% dupl ),Gene!='WT')
 
 
 
@@ -291,6 +215,10 @@ keio[is.na(keio)]<-NA
 keio$LB_22hr<-as.numeric(as.character(keio$LB_22hr))
 keio$MOPS_24hr<-as.numeric(as.character(keio$MOPS_24hr))
 keio$MOPS_48hr<-as.numeric(as.character(keio$MOPS_48hr))
+
+kdupl<-as.factor(unique(keio[which(duplicated(keio$Gene)),]$Gene))
+kduplicates<-subset(keio,Gene %in% kdupl & Gene!='none')
+
 
 mics<-merge(mics,keio,by.x=c('JW_id','ECK','Gene'),by.y=c('JW.id','ECK.number','Gene'),all.x=TRUE)
 mics[is.na(mics$LB_22hr),c('LB_22hr','MOPS_24hr','MOPS_48hr')]<-keio[match(subset(mics,is.na(LB_22hr))$Gene,keio$Gene),c('LB_22hr','MOPS_24hr','MOPS_48hr')]
@@ -315,6 +243,9 @@ bacall$Drug_D<-NULL
 bacall<-subset(bacall,! Gene %in% c('XXXXXXX','no bacteria','empty'))
 
 bacmic<-merge(mics,bacall,id=c('Gene'),all.x = TRUE)
+
+#Data fully merged!!
+
 
 
 #Get only unique instances of knockouts
