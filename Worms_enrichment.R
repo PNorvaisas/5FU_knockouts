@@ -7,6 +7,42 @@ library('Vennerable')
 library('GOplot')
 library(quantreg)
 
+library('KEGG.db')
+library('KEGGREST')
+library('biomaRt')
+
+
+
+# source("https://bioconductor.org/biocLite.R")
+# biocLite("biomaRt")
+# listDatasets(useMart("ENSEMBL_MART_ENSEMBL", host = "www.ensembl.org"))
+# mart=useMart("bacterial_mart_5")
+# listDatasets(mart)
+
+
+
+keggInfo('pathway')
+keggLink("pathway", "eco")
+
+keggLink("pathway", "eco")
+keggList("pathway")
+keggLink("pathway", "eco")
+
+keggeco<-keggList("eco")
+
+keggmec<-keggLink("pathway", "eco")
+
+url <- color.pathway.by.objects("path:eco00260",
+                                c("eco:b0002", "eco:c00263"),
+                                c("#ff0000", "#00ff00"), c("#ffff00", "yellow"))
+if(interactive()){
+  browseURL(url)
+}
+
+keggGet(c('path:eco00260'),option=c('kgml'))
+keggGet(c('path:eco00260'),option=c('kgml'))
+
+
 
 
 GOsplit<-function(x,rtrn="GO"){
@@ -64,8 +100,6 @@ read.GO<-function(flnm,filter=TRUE,pval='Benjamini'){
 }
 
 qbacmiq<-read.table('Data/MICs_and_bacterial_growth-Unique_clean.csv',sep=',',header=TRUE)
-
-
 unicom<-read.table('Data/MICs_Unknown_function.csv',sep=',',header=TRUE,stringsAsFactors = FALSE)
 
 
@@ -142,6 +176,8 @@ wormsens05<-subset(qbacmicq,MIC<q05)$Gene
 
 wormres90<-subset(qbacmicq,MIC>q90)$Gene
 wormres25<-subset(qbacmicq,MIC>2.5)$Gene
+wormresall<-subset(qbacmicq,MIC>1)$Gene
+wormresall5<-subset(qbacmicq,MIC>5)$Gene
 wormsens10<-subset(qbacmicq,MIC<q10)$Gene
 
 resmic5=list('Bacteria sensitive bottom 5%'=bacsens05,
@@ -151,9 +187,9 @@ resmic5=list('Bacteria sensitive bottom 5%'=bacsens05,
 
 resmic10=list('Bacteria sensitive bottom 10%'=bacsens10,
               'Bacteria resistant top 10%'=bacres90,
-             'Worms resistant MIC>2.5'=wormres25) # ,'Worms sensitive bottom 10%'=wormsens10
+             'Worms resistant top 10%'=wormres90) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
 
-resmic_df<-plyr::ldply(resmic, cbind)
+resmic_df<-plyr::ldply(resmic10, cbind)
 resmic_df<-rename(resmic_df,c('.id'='List','1'='Gene'))
 
 
@@ -165,13 +201,15 @@ rmc$'Worms sensitive bottom 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Wo
 rmc<-rmc[,c(1,19:21,2:7,9:18,8)]
 write.csv(rmc,'Data/Venn_Worm-Bacteria_resistance_overlap.csv')
 
-plot(Venn(resmic10), doWeights = FALSE)#,type='ellipses'  ,type='ellipses' ,type='ellipses'
-dev.copy2pdf(device=cairo_pdf,file="Figures/Venn_Worm-Bacteria_resistance_overlap_MICover2.5_10perc.pdf",width=9,height=9)
+plot(Venn(resmic10), doWeights = FALSE,type='ellipses')#,type='ellipses'  ,type='ellipses' ,type='ellipses'
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Venn_Worm-Bacteria_resistance_overlap_MICover2.5_10perc.pdf",sep=''),width=9,height=9)
 
 
 
 enbct<-qbacmicq[,c('Gene','UniACC','MIC','NGM_D')]
 enbc<-rename(enbct, c('MIC'="logFC",'UniACC'='ID'))
+
+
 
 Over25EC<-read.GO("Enrichment/Over25_chart_EC-bac.txt",pval='Benjamini',filter=FALSE)
 
