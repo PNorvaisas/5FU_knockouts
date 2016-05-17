@@ -14,10 +14,11 @@ library(ellipse)
 elipsoid=function(df,xvar,yvar,scale=1,groups=''){
   df<-subset(df,!is.na(df[,xvar]) &!is.na(df[,yvar]))
   df_ell <- data.frame()
+  #This part not working
   if (groups!=''){
     for(g in levels(df[,groups])){
-      df_ell <- rbind(df_ell, cbind(as.data.frame(with(df[df$groups==g,],ellipse(cor(xvar, yvar),scale=c(sd(xvar),sd(yvar)),centre=c(mean(x),mean(y))))),
-                                    group=g))
+      df_ell <- rbind(df_ell,
+                      cbind(as.data.frame( with(df[df$groups==g,],ellipse(cor(xvar, yvar),scale=c(sd(xvar),sd(yvar)),centre=c(mean(x),mean(y))))),group=g))
     }
   }else {
       df_ell <- as.data.frame( ellipse( cor(df[,c(xvar,yvar)],use='complete.obs'),scale=c( sd(df[,xvar],na.rm=TRUE)*scale ,sd(df[,yvar],na.rm=TRUE)*scale ),centre=c( mean(df[,xvar],na.rm=TRUE),mean(df[,yvar],na.rm=TRUE) )))
@@ -28,15 +29,15 @@ elipsoid=function(df,xvar,yvar,scale=1,groups=''){
 
 lm_eqn = function(m) {
   fres<-summary(m)
-  l <- list(a = format(coef(m)[1], digits = 2),
-            b = format(abs(coef(m)[2]), digits = 2),
+  l <- list(a = format(abs(coef(m)[2]), digits = 2),
+            b = format(coef(m)[1], digits = 2),
             r2 = format(summary(m)$r.squared, digits = 3),
             p2 = format(pf(fres$fstatistic[1], fres$fstatistic[2], fres$fstatistic[3],lower.tail = FALSE)[[1]], digits = 3));
   
   if (coef(m)[2] >= 0)  {
-    eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2*","~~italic(p)~"="~p2,l)
+    eq <- substitute(italic(y) == b + a %.% italic(x)*","~~italic(r)^2~"="~r2*","~~italic(p)~"="~p2,l)
   } else {
-    eq <- substitute(italic(y) == a - b %.% italic(x)*","~~italic(r)^2~"="~r2*","~~italic(p)~"="~p2,l)    
+    eq <- substitute(italic(y) == b - a %.% italic(x)*","~~italic(r)^2~"="~r2*","~~italic(p)~"="~p2,l)    
   }
   
   as.character(as.expression(eq));                 
@@ -46,8 +47,8 @@ lm_eqn = function(m) {
 
 
 #Output folder:
-odir<-'Figures_v3'
-ddir<-'Data_v3'
+odir<-'Figures_v4'
+ddir<-'Data_v4'
 
 #qbacmicq - no outliers
 bacmic<-read.table(paste(ddir,'/MICs_and_bacterial_growth-All.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
@@ -79,60 +80,58 @@ bacsens<-subset(bacmic,NGM_D<NGM_C*bgls+bgli)
 
 theme_set(theme_light())
 
-baccor<-ggplot(bacmic,aes(x=NGM_C,y=NGM_D))+
-  geom_point(aes(color=ifelse(Gene %in% bac3a$Gene,'3rd','2nd')),size=1)+ylim(0, .25)+
-  ylab(expression(paste('Knockout strain growth OD - 100',mu,'M 5FU')))+
+baccor<-ggplot(bacmic,aes(x=NGM_C,y=NGM_D,color=MIC))+
+  geom_point(size=0.5)+ylim(0, .35)+
+  ylab(expression(paste('Knockout strain growth OD - 50',mu,'M 5FU')))+
   xlab('Knockout strain growth OD - Control')+
-  ggtitle(expression(paste('Growth of knockout strains in control and 100',mu,'M 5FU treatment')))+
+  ggtitle(expression(paste('Growth of knockout strains in control and 50',mu,'M 5FU treatment')))+
   stat_smooth(aes(group = 1),method = "lm")+
   geom_abline(intercept=0,slope=1,alpha=0.5,aes(color='grey'),linetype='longdash')+
   geom_text(aes(label=ifelse(NGM_D>NGM_C*bgus+bgui | NGM_D < NGM_C*bgls+bgli | NGM_C<0.03 ,as.character(Gene),'')),
             hjust=-0.1, vjust=-0.1,size=3)+
   geom_errorbarh(aes(xmax=NGM_C+NGM_sd_C,xmin=NGM_C-NGM_sd_C),height=.001,alpha=0.2)+
   geom_errorbar(aes(ymax=NGM_D+NGM_sd_D,ymin=NGM_D-NGM_sd_D),width=0.001,alpha=0.2)+
-  geom_abline(intercept=bgli,slope=bgls,alpha=0.5,color='red')+
-  geom_abline(intercept=bgui,slope=bgus,alpha=0.5,color='red')+
-  annotate("text", 0.25,0.25*bgls+bgli+0.005, label = "5%",color='red')+
-  annotate("text", 0.25,0.25*bgus+bgui+0.005, label = "95%",color='red')+
+   geom_abline(intercept=bgli,slope=bgls,alpha=0.5,color='red')+
+   geom_abline(intercept=bgui,slope=bgus,alpha=0.5,color='red')+
+  annotate("text", 0.35,0.35*bgls+bgli+0.005, label = "5%",color='red')+
+  annotate("text", 0.35,0.35*bgus+bgui+0.005, label = "95%",color='red')+
   scale_x_continuous(breaks=seq(0,.3,by=.05))+
-  labs(color='Screen')+
-  #labs(color=expression(paste('MIC [5FU], ',mu,'M')))+
-  annotate('text',x = 0.125, y = 0.25, label = lm_eqn(fitbac), parse = TRUE)
-baccor
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Control-Treatment_NGM_growth_Screen-comparison.pdf",sep = ''),width=9,height=9)
-
-
-
-
-bac3cor<-ggplot(subset(bacmic,Gene %in% bac3m$Gene),aes(x=NGM_C,y=NGM_D,color=MIC))+
-  geom_point(size=1)+ylim(0, .25)+
-  ylab(expression(paste('Knockout strain growth OD - 100',mu,'M 5FU')))+
-  xlab('Knockout strain growth OD - Control')+
-  ggtitle(expression(paste('Growth of knockout strains in control and 100',mu,'M 5FU treatment')))+
-  #stat_smooth(aes(group = 1),method = "lm")+
-  geom_abline(intercept=0,slope=1,alpha=0.5,aes(color='grey'),linetype='longdash')+
-  #geom_text(aes(label=ifelse(NGM_D>NGM_C*bgus+bgui | NGM_D < NGM_C*bgls+bgli | NGM_C<0.03 ,as.character(Gene),'')),
-  #          hjust=-0.1, vjust=-0.1,size=3)+
-  geom_text(aes(label=Gene))+
-  geom_errorbarh(aes(xmax=NGM_C+NGM_sd_C,xmin=NGM_C-NGM_sd_C),height=.001,alpha=0.2)+
-  geom_errorbar(aes(ymax=NGM_D+NGM_sd_D,ymin=NGM_D-NGM_sd_D),width=0.001,alpha=0.2)+
-  #geom_abline(intercept=bgli,slope=bgls,alpha=0.5,color='red')+
-  #geom_abline(intercept=bgui,slope=bgus,alpha=0.5,color='red')+
-  #annotate("text", 0.25,0.25*bgls+bgli+0.005, label = "5%",color='red')+
-  #annotate("text", 0.25,0.25*bgus+bgui+0.005, label = "95%",color='red')+
-  scale_x_continuous(breaks=seq(0,.3,by=.05))+
-  #labs(color='Screen')+
   labs(color=expression(paste('MIC [5FU], ',mu,'M')))+
-  annotate('text',x = 0.125, y = 0.25, label = lm_eqn(fitbac), parse = TRUE)
-bac3cor
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Control-Treatment_NGM_growth_3rd_Screen.pdf",sep = ''),width=9,height=9)
+  annotate('text',x = 0.125, y = 0.35, label = lm_eqn(fitbac), parse = TRUE)
+baccor
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Control-Treatment_NGM_growth.pdf",sep = ''),width=9,height=9)
+
+# In the 4th screen 50uM 5FU was used instead of 100uM
+# 
+# bac3cor<-ggplot(subset(bacmic,Gene %in% bac3m$Gene),aes(x=NGM_C,y=NGM_D,color=MIC))+
+#   geom_point(size=1)+ylim(0, .25)+
+#   ylab(expression(paste('Knockout strain growth OD - 100',mu,'M 5FU')))+
+#   xlab('Knockout strain growth OD - Control')+
+#   ggtitle(expression(paste('Growth of knockout strains in control and 100',mu,'M 5FU treatment')))+
+#   #stat_smooth(aes(group = 1),method = "lm")+
+#   geom_abline(intercept=0,slope=1,alpha=0.5,aes(color='grey'),linetype='longdash')+
+#   #geom_text(aes(label=ifelse(NGM_D>NGM_C*bgus+bgui | NGM_D < NGM_C*bgls+bgli | NGM_C<0.03 ,as.character(Gene),'')),
+#   #          hjust=-0.1, vjust=-0.1,size=3)+
+#   geom_text(aes(label=Gene))+
+#   geom_errorbarh(aes(xmax=NGM_C+NGM_sd_C,xmin=NGM_C-NGM_sd_C),height=.001,alpha=0.2)+
+#   geom_errorbar(aes(ymax=NGM_D+NGM_sd_D,ymin=NGM_D-NGM_sd_D),width=0.001,alpha=0.2)+
+#   #geom_abline(intercept=bgli,slope=bgls,alpha=0.5,color='red')+
+#   #geom_abline(intercept=bgui,slope=bgus,alpha=0.5,color='red')+
+#   #annotate("text", 0.25,0.25*bgls+bgli+0.005, label = "5%",color='red')+
+#   #annotate("text", 0.25,0.25*bgus+bgui+0.005, label = "95%",color='red')+
+#   scale_x_continuous(breaks=seq(0,.3,by=.05))+
+#   #labs(color='Screen')+
+#   labs(color=expression(paste('MIC [5FU], ',mu,'M')))+
+#   annotate('text',x = 0.125, y = 0.25, label = lm_eqn(fitbac), parse = TRUE)
+# bac3cor
+# dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Control-Treatment_NGM_growth_3rd_Screen.pdf",sep = ''),width=9,height=9)
 
 
 
 bacmed<-melt(bacmic[,colnames(bacmic) %in% c('Gene','NGM_C','NGM_D','LB_22hr','MOPS_24hr','MOPS_48hr')],
              id=c('Gene'),variable.name = 'Media',value.name='OD')
 bacmed$Media<-factor(bacmed$Media,levels = c('NGM_C','NGM_D','LB_22hr','MOPS_24hr','MOPS_48hr'),
-                     labels=c('NGM - 24h','NGM + 100uM 5FU','LB - 22hr','MOPS - 24hr','MOPS - 48hr'))
+                     labels=c('NGM - 24h','NGM + 50uM 5FU','LB - 22hr','MOPS - 24hr','MOPS - 48hr'))
 bacmed<-subset(bacmed,!Media %in% c('MOPS - 48hr')) #, 'MOPS - 48hr'
 
 bachist<-ggplot(bacmed,aes(x=OD,fill=Media))+
@@ -165,12 +164,12 @@ mbcD<-ggplot(qbacmicq,aes(x=MIC,y=NGM_D))+geom_point(size=1)+
   geom_errorbar(aes(ymax=NGM_D+NGM_sd_D,ymin=NGM_D-NGM_sd_D),width=0.0001,alpha=0.2,color='black')+
   geom_text(aes(label=ifelse((NGM_D>MIC*mndus+mndui | NGM_D < MIC*mndls+mndli) | MIC>50 ,Gene,'')),
             hjust=-0.1, vjust=-0.75,size=3)+
-  ggtitle(expression(paste('Strain growth in NGM 24hr OD - 100',mu,'M 5FU')))+
+  ggtitle(expression(paste('Strain growth in NGM 24hr OD - 50',mu,'M 5FU')))+
   xlab(expression(paste('MIC [5FU], ',mu,'M')))+
-  ylab('OD')+ylim(0,0.25)+
+  ylab('OD')+ylim(0,0.35)+
   scale_x_continuous(breaks=seq(0,100,by=25))+
   scale_y_continuous(breaks=seq(0,0.25,by=0.05))+
-  annotate('text',x = 50, y = 0.225, label = lm_eqn(fitD), parse = TRUE)
+  annotate('text',x = 50, y = 0.35, label = lm_eqn(fitD), parse = TRUE)
   #++xlim(0,115)
   #geom_path(data=df_el, aes(x=MIC, y=NGM_D), size=1, linetype=1,color='grey',alpha=0.5)
   #stat_density2d()
@@ -179,12 +178,19 @@ mbcD
 mbcD+geom_path(data=df_MIC_D, aes(x=MIC, y=NGM_D), size=1, linetype=1,color='red',alpha=0.2)
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC-NGMTreatment_bac_growth_NoLabels_SD-elipse.pdf",sep=''),width=5,height=5)
 
-mbcD+stat_smooth(aes(group = 1),method = "lm")+
+mbcDl<-mbcD+stat_smooth(aes(group = 1),method = "lm")+
   geom_abline(intercept=mndli,slope=mndls,alpha=0.5,color='red')+
   geom_abline(intercept=mndui,slope=mndus,alpha=0.5,color='red')+
   annotate("text", 100, mndls*100+mndli+0.005, label = "5%",color='red')+
   annotate("text", 100, mndus*100+mndui+0.005, label = "95%",color='red')
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC-NGMTreatment_bac_growth_NoLabels.pdf",sep=''),width=5,height=5)
+mbcDl
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/MIC-NGMTreatment_bac_growth_NoLabels.pdf",sep=''),width=5,height=5)
+
+
+mbcDl+geom_path(data=df_MIC_D, aes(x=MIC, y=NGM_D), size=1, linetype=1,color='red',alpha=0.2)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC-NGMTreatment_bac_growth_Linear_SD-elipse.pdf",sep=''),width=5,height=5)
+
 
 
 fitC<-lm(NGM_C ~ MIC,qbacmicq)
@@ -197,26 +203,33 @@ mncus<-coefficients(fitNCqr)[2,][[2]]
 df_MIC_C<-elipsoid(subset(qbacmicq,!is.na(MIC) & ! is.na(NGM_C)),'MIC','NGM_C')
 
 mbcC<-ggplot(qbacmicq,aes(x=MIC,y=NGM_C))+geom_point(size=1)+
-  ylim(0,0.3)+
+  ylim(0,0.35)+
   geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=0.2,color='black')+
   geom_errorbar(aes(ymax=NGM_C+NGM_sd_C,ymin=NGM_C-NGM_sd_C),width=0.001,alpha=0.2,color='black')+
   geom_text(aes(label=ifelse((NGM_C>MIC*mncus+mncui | NGM_C < MIC*mncls+mncli) | MIC>45,Gene,'')),
             hjust=-0.1, vjust=-0.75,size=3)+
-
   scale_x_continuous(breaks=seq(0,100,by=25))+
   ggtitle('Strain growth in NGM 24hr OD - Control')+xlab(expression(paste('MIC [5FU], ',mu,'M')))+ylab('OD')+
-  annotate('text',x = 50, y = 0.29, label = lm_eqn(fitC), parse = TRUE)
+  annotate('text',x = 50, y = 0.35, label = lm_eqn(fitC), parse = TRUE)
 mbcC
 
 mbcC+geom_path(data=df_MIC_C, aes(x=MIC, y=NGM_C), size=1, linetype=1,color='red',alpha=0.2)
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC-NGMControl_bac_growth_NoLabels_SD-elipse.pdf",sep=''),width=5,height=5)
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/MIC-NGMControl_bac_growth_NoLabels_SD-elipse.pdf",sep=''),width=5,height=5)
 
-mbcC+geom_abline(intercept=mncli,slope=mncls,alpha=0.5,color='red')+
+mbcCl<-mbcC+geom_abline(intercept=mncli,slope=mncls,alpha=0.5,color='red')+
   stat_smooth(aes(group = 1),method = "lm")+
   geom_abline(intercept=mncui,slope=mncus,alpha=0.5,color='red')+
   annotate("text", 100, mncls*100+mncli+0.005, label = "5%",color='red')+
   annotate("text", 100, mncus*100+mncui+0.005, label = "95%",color='red')
+mbcCl
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC-NGMControl_bac_growth_NoLabels.pdf",sep=''),width=5,height=5)
+
+
+mbcCl+geom_path(data=df_MIC_C, aes(x=MIC, y=NGM_C), size=1, linetype=1,color='red',alpha=0.2)
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/MIC-NGMControl_bac_growth_Linear_SD-elipse.pdf",sep=''),width=5,height=5)
+
 
 
 fitLB <- lm(LB_22hr ~ MIC, data=qbacmicq)
@@ -241,6 +254,20 @@ mbcLB<-ggplot(qbacmicq,aes(x=MIC,y=LB_22hr))+geom_point(size=1)+
 mbcLB
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC-LB22hr_bac_growth_NoLabels.pdf",sep=''),width=5,height=5)
 
+
+mbcM24<-ggplot(qbacmicq,aes(x=MIC,y=MOPS_24hr))+geom_point(size=1)+
+  stat_smooth(aes(group = 1),method = "lm")+xlim(0,100)+
+  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=0.2,color='black')+
+#   geom_text(aes(label=ifelse(((LB_22hr>MIC*mlbus+mlbui | LB_22hr < MIC*mlbls+mlbli) & MIC >1) | MIC>40,Gene,'')),
+#             hjust=0.05, vjust=-0.75,size=3)+
+#   geom_abline(intercept=mlbli,slope=mlbls,alpha=0.5,color='red')+
+#   geom_abline(intercept=mlbui,slope=mlbus,alpha=0.5,color='red')+
+#   annotate("text", 100, mlbls*100+mlbli+0.02, label = "5%",color='red')+
+#   annotate("text", 100, mlbus*100+mlbui+0.02, label = "95%",color='red')+
+  ggtitle('Strain growth in MOPS 24hr OD - Control')+
+  xlab(expression(paste('MIC [5FU], ',mu,'M')))+ylab('OD')
+  # annotate('text',x = 50, y = 1.1, label = lm_eqn(fitLB), parse = TRUE)
+mbcM24
 
 
 #All MICs

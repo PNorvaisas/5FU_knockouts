@@ -11,21 +11,21 @@ library('quantreg')
 library('splitstackshape')
 
 
-odir<-'Figures_v2'
-ddir<-'Data_v2'
+odir<-'Figures_v4'
+ddir<-'Data_v4'
 
-qbacmiq<-read.table(paste(ddir,'/MICs_and_bacterial_growth-Unique_clean.csv',sep=''),sep=',',header=TRUE)
-unicom<-read.table(paste(ddir,'/MICs_Unknown_function.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
+qbacmicq<-read.table(paste(ddir,'/MICs_and_bacterial_growth-Clean.csv',sep=''),sep=',',header=TRUE)
+unicom<-read.table(paste('Data/MICs_Unknown_function.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
 
 
 
 
 PLP<-read.table('Data/Genes_using_PLP.csv',sep=',',header=FALSE)
-all<-subset(qbacmic,!is.na(Gene))$Gene
+all<-subset(qbacmicq,!is.na(Gene))$Gene
 PLPg<-PLP$V1
-MIC1<-subset(qbacmic,!is.na(Gene) & MIC>1)$Gene
-MIC25<-subset(qbacmic,!is.na(Gene) & MIC>2.5)$Gene
-MIC5<-subset(qbacmic,!is.na(Gene) & MIC>5)$Gene
+MIC1<-subset(qbacmicq,!is.na(Gene) & MIC>1)$Gene
+MIC25<-subset(qbacmicq,!is.na(Gene) & MIC>2.5)$Gene
+MIC5<-subset(qbacmicq,!is.na(Gene) & MIC>5)$Gene
 
 
 PLPl<-list('PLP using'=as.character(PLPg),'Whole Keio library'=all,'MIC>5'=MIC5)
@@ -39,7 +39,7 @@ PLP_df<-plyr::ldply(PLPc, cbind)
 PLP_df<-rename(PLP_df,c('.id'='List','1'='Gene'))
 
 
-plps<-subset(qbacmic, Gene %in% unique(PLP_df$Gene))
+plps<-subset(qbacmicq, Gene %in% unique(PLP_df$Gene))
 plps$'PLP using'<-ifelse(plps$Gene %in% PLPc$'PLP using',TRUE,FALSE)
 plps$'MIC>1'<-ifelse(plps$Gene %in% PLPc$'MIC>1',TRUE,FALSE)
 plps$'MIC>5'<-ifelse(plps$Gene %in% PLPc$'MIC>5',TRUE,FALSE)
@@ -69,11 +69,11 @@ bgls2<-coefficients(fitqr2)[2,][[1]]
 bgus2<-coefficients(fitqr2)[2,][[2]]
 
 
-q05<-quantile(qbacmic$MIC,0.05,na.rm=TRUE)[[1]]
-q10<-quantile(qbacmic$MIC,0.1,na.rm=TRUE)[[1]]
-q90<-quantile(qbacmic$MIC,0.9,na.rm=TRUE)[[1]]
-q95<-quantile(qbacmic$MIC,0.95,na.rm=TRUE)[[1]]
-q99<-quantile(qbacmic$MIC,0.99,na.rm=TRUE)[[1]]
+q05<-quantile(qbacmicq$MIC,0.05,na.rm=TRUE)[[1]]
+q10<-quantile(qbacmicq$MIC,0.1,na.rm=TRUE)[[1]]
+q90<-quantile(qbacmicq$MIC,0.9,na.rm=TRUE)[[1]]
+q95<-quantile(qbacmicq$MIC,0.95,na.rm=TRUE)[[1]]
+q99<-quantile(qbacmicq$MIC,0.99,na.rm=TRUE)[[1]]
 
 
 
@@ -97,9 +97,9 @@ resmic5=list('Bacteria sensitive bottom 5%'=bacsens05,
             'Worms resistant top 5%'=wormres95,
             'Worms sensitive bottom 5%'=wormsens05)
 
-resmic10=list('Bacteria sensitive bottom 10%'=bacsens10,
-              'Bacteria resistant top 10%'=bacres90,
-             'Worms resistant top 10%'=wormres90) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
+resmic10=list('Worms resistant top 10%'=wormres90,
+              'Bacteria sensitive bottom 10%'=bacsens10,
+              'Bacteria resistant top 10%'=bacres90) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
 
 resmic_df<-plyr::ldply(resmic10, cbind)
 resmic_df<-rename(resmic_df,c('.id'='List','1'='Gene'))
@@ -111,7 +111,7 @@ rmc$'Bacteria sensitive bottom 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List==
 rmc$'Worms resistant top 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Worms resistant top 5%")$Gene,TRUE,FALSE)
 rmc$'Worms sensitive bottom 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Worms sensitive bottome 5%%")$Gene,TRUE,FALSE)
 rmc<-rmc[,c(1,19:21,2:7,9:18,8)]
-write.csv(rmc,'Data/Venn_Worm-Bacteria_resistance_overlap.csv')
+write.csv(rmc,paste(ddir,'/Venn_Worm-Bacteria_resistance_overlap.csv',sep=''))
 
 
 
