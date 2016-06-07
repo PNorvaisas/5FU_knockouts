@@ -8,8 +8,8 @@ library(tidyr)
 
 
 #Output folder:
-odir<-'Figures_v4'
-ddir<-'Data_v4'
+odir<-'Figures_final'
+ddir<-'Data_final'
 
 
 
@@ -54,6 +54,10 @@ evalmic2=function(all){
 keioinfo<-read.table('../Keio_library/Keio_library_fully_annotated.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 keioinfo$X<-NULL
 keioinfo<-subset(keioinfo,!Plate %in% c('91','93','95'))
+
+keioundis<-read.table('../Keio_library/Keio_undisrupted.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+
+
 
 
 
@@ -264,6 +268,7 @@ conc<-merge(alls,keioinfo,by=c('Gene','Plate','Well'),all.x=TRUE,all.y=TRUE)
 #15 excluded due to prior knowledge of poor growth
 nodata<-subset(conc,is.na(MIC) & !Gene %in% c('present','WT',NA))
 
+#Needs Keio growth data
 nogrowth<-merge(nodata, keio,by=c('Gene'))
 write.csv(nogrowth,'Data/Excluded.csv')
 
@@ -408,7 +413,7 @@ mics[is.na(mics$LB_22hr),c('LB_22hr','MOPS_24hr','MOPS_48hr')]<-keio[match(subse
 # write.csv(bac3m[,c('Plate','Well','Gene','Nplate','NWell','Replicate','Drug','Time','OD_raw','OD')],paste(ddir,'/3rd_screen_bacterial_annotated.csv',sep=''))
 
 #Get bacterial annotation
-bacannot<-read.table(paste(ddir,'/Plate_annotations.csv',sep=''),sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+bacannot<-read.table('Data_v4/Plate_annotations.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 bacannot$X<-NULL
 
 #Get 4th screen
@@ -423,9 +428,28 @@ bac42[bac42$Replicate==1,'Replicate']<-3
 bac42[bac42$Replicate==2,'Replicate']<-4
 bac42[bac42$Replicate==5,'Replicate']<-2
 
-bac4a<-merge(bac41,bac42,all.x=TRUE,all.y=TRUE)
+bac4f<-read.table('4th_bacterial_screen_fill/4th_screen_bacterial_linear_fill.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+bac4f<-rename(bac4f, c("Plate"="Nplate", "Well"="NWell",'OD'='OD_raw'))
 
-bac4all<-merge(bac4a,bacannot,by=c('Nplate','NWell'),all.x = TRUE)
+
+#Needs separate annotation because of changed layout
+bac4fa<-merge(bac4f,bacannot,by=c('Nplate','NWell'),all.x = TRUE)
+#
+#G1,H1,A2,Eq  fecI, dacC, idcA, purA
+
+bac4fix<-data.frame(Nplate=c(8,8,8,8),
+                    NWell=c('G1','H1','A2','E1'),
+                    Gene=c('fecI','dacC','ldcA','purA'))
+bac4fix<-merge(bac4fix,keioinfo[,c('Gene','Plate','Well')],by='Gene')
+bac4fix$Gene<-as.character(bac4fix$Gene)
+
+bac4fa[bac4fa$NWell %in% c('G1','H1','A2','E1'),c('Gene','Plate','Well')]<-bac4fix[match(bac4fa[bac4fa$NWell %in% c('G1','H1','A2','E1'),]$NWell,bac4fix$NWell),c('Gene','Plate','Well')]
+bac4fa[!bac4fa$NWell %in% c('G1','H1','A2','E1'),'Replicate']<-bac4fa[!bac4fa$NWell %in% c('G1','H1','A2','E1'),'Replicate']+4
+
+bac4a<-merge(bac41,bac42,all.x=TRUE,all.y=TRUE)
+bac4al<-merge(bac4a,bacannot,by=c('Nplate','NWell'),all.x = TRUE)
+
+bac4all<-merge(bac4al,bac4fa,all.x=TRUE,all.y=TRUE)
 
 bac4all[bac4all$Drug=='0uM','Drug']<-'0'
 bac4all[bac4all$Drug=='50uM','Drug']<-'50'
@@ -452,10 +476,10 @@ back_sd<-sd(subset(bac4all,Gene=='Blank' & OD_raw<0.075)$OD_raw)
 bac4all$OD<-bac4all$OD_raw-back
 
 bac4sum<-dcast(bac4all,Gene+Plate+Well+Nplate+NWell+Drug~Replicate,mean,value.var = c('OD'))
-bac4sum$OD_avg<-apply(bac4sum[,c('1','2','3','4')],1,mean)
-bac4sum$OD_sd<-apply(bac4sum[,c('1','2','3','4')],1,sd)
+bac4sum$OD_avg<-apply(bac4sum[,c('1','2','3','4')],1,mean,na.rm=TRUE)
+bac4sum$OD_sd<-apply(bac4sum[,c('1','2','3','4')],1,sd,na.rm=TRUE)
 
-
+dir.create(ddir, showWarnings = TRUE, recursive = FALSE, mode = "0777")
 write.csv(bac4sum,paste(ddir,'/Bacterial_growth_summary.csv',sep=''))
 
 
@@ -555,45 +579,100 @@ bacall$Screen_C<-NULL
 bacall$Screen_D<-NULL
 
 
-bacmic<-merge(mics,bacall,id=c('Plate','Well','Gene'),all.x = TRUE)
+bacmict<-merge(mics,bacall,id=c('Plate','Well','Gene'),all.x = TRUE)
 
+
+#Remove undisrupted and poor growing strains
+#Make sure you can use Gene as unique identifier
+intersect(rdupl,nodata$Gene)
+intersect(rdupl,keioundis$Gene)
+
+bacmic<-subset(bacmict,!Gene %in% keioundis$Gene & !Gene=='ydcT' )
 #Data fully merged!!
 
+undisrupted<-subset(bacmict,Gene %in% keioundis$Gene)
+undisrupted$NComment<-'Undisrupted gene'
+
+#Undisrupted and not in data
+unmis<-setdiff(keioundis$Gene,undisrupted$Gene)
+
+unno<-subset(nodata,Gene %in% keioundis$Gene)
+unno$NComment<-'Undisrupted gene'
+
+#Also remove ydcT
+othernot<-subset(nodata,!Gene %in% keioundis$Gene)
+otherno<-merge(othernot,subset(bacmict,Gene=='ydcT'),all.x=TRUE,all.y=TRUE)
+otherno$NComment<-'Eliminated; no growth'
+
+remsett<-merge(undisrupted,unno,all.x=TRUE,all.y=TRUE)
+remsetf<-merge(remsett,otherno,all.x=TRUE,all.y=TRUE)
+
+remsetf<-remsetf[,!colnames(remsetf) %in% c('Row','Column','Comment')]
+remsetf<-rename(remsetf,c("NComment"="Comment"))
+
+remset<-remsetf[,c('Gene','Plate','Well','JW_id','ECK','bno','0','1','2.5','5',
+                   'MIC','MIC_sd','NGM_C','NGM_sd_C','NGM_D','NGM_sd_D',
+                   'LB_22hr','MOPS_24hr','MOPS_48hr','Comment')]
+
+#All unique gens and one instance of WT
+length(allgenes)+1
+#Genes in screen
+length(bacmic$Gene)
+#Genes removed
+length(remset$Gene)
+
+#Do we have everything?
+length(allgenes)+1==length(bacmic$Gene)+length(remset$Gene)
+
+
+#Remove knockouts that cause developmental delays
+rmdev<-read.table('Keio_development_delays.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+
+
+
+
 #qbacmicq - no outliers
-qbacmicq<-subset(bacmic,NGM_C>0.1 | is.na(NGM_C))
+qbacmicq<-subset(bacmic,NGM_C>0.05 | is.na(NGM_C))
+
+qbacmicqdt<-subset(qbacmicq,!Gene %in% setdiff(rmdev$Gene,'wbbL'))
+qbacmicqd<-qbacmicqdt[!(qbacmicqdt$Gene=='wbbL' & qbacmicqdt$Plate=='21' & qbacmicqdt$Well=='A7'), ]
 
 #Sanity checks:
-poor<-subset(bacmic,NGM_C<0.1)$Gene
+poor<-subset(bacmic,NGM_C<0.05)$Gene
 removed<-setdiff(bacmic$Gene,qbacmicq$Gene)
+#Check whether the removal is OK
 intersect(removed,poor)
 poor
 
+
+
+
 #Missing bacterial growth for MIC>=5
 subset(bacmic,MIC>2.5 & is.na(NGM_C))
-write.csv(subset(bacmic,MIC>2.5 & is.na(NGM_C)),paste(ddir,'/MICs_and_bacterial_growth_Missing-growth_MICover2.5.csv',sep=''))
+#write.csv(subset(bacmic,MIC>2.5 & is.na(NGM_C)),paste(ddir,'/MICs_and_bacterial_growth_Missing-growth_MICover2.5.csv',sep=''))
 
-#Additional 21 knockouts?
-length(subset(bacmic,MIC>2.5 & is.na(NGM_C))$Gene)
-length(subset(bacmic,MIC>2.5)$Gene)
 
-length(subset(bacmic,MIC>1 & is.na(NGM_C))$Gene)
-length(subset(bacmic,MIC>1)$Gene)
-
-#None of the MIC=5 hits were included
-length(subset(bacmic,MIC==5 & is.na(NGM_C))$Gene)
-length(subset(bacmic,MIC==5)$Gene)
 
 
 head(subset(bac4sum[order(bac4sum$OD_sd,decreasing = TRUE),],Gene!='Blank'),n=20)
 
 write.csv(bacmic,paste(ddir,'/MICs_and_bacterial_growth-All.csv',sep=''))
 write.csv(qbacmicq,paste(ddir,'/MICs_and_bacterial_growth-Clean.csv',sep=''))
+write.csv(qbacmicqd,paste(ddir,'/MICs_and_bacterial_growth-Clean-NoDevDelays.csv',sep=''))
+
+write.csv(remset,'Data/All_removed_from_screen.csv')
+
+
+
+bacmic_shortt<-bacmic[,!colnames(bacmic) %in% c('0','1','2.5','5','EG','GI')]
+bacmic_short<-bacmic_shortt[,c(1:5,8:9,6:7,10:16)]
+write.csv(bacmic_short,paste(ddir,'/MICs_and_bacterial_growth-All_simple.csv',sep=''))
 
 
 duplset<-subset(keioinfo,Gene %in% rdupl & !Gene %in% c('WT',NA,'present'))
 duplset<-duplset[order(duplset$Gene),]
 
-write.csv(duplset,paste(ddir,'/Real_duplicates.csv',sep=''))
+#write.csv(duplset,paste(ddir,'/Real_duplicates.csv',sep=''))
 
 # 
 # #PT lists

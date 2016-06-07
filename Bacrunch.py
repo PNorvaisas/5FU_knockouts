@@ -109,7 +109,7 @@ def writecsv(data,ofile,delim='\t'):
 
 
 
-os.chdir('/Users/Povilas/Projects/2015-Metformin/Worms/4th_bacterial_screen_batch-2')
+os.chdir('/Users/Povilas/Projects/2015-Metformin/Worms/4th_bacterial_screen_fill')
 
 ifiles=glob.glob('*.xlsx')
 ifiles=[ifl for ifl in ifiles if 'uM' in ifl]
@@ -128,7 +128,7 @@ for ifile in ifiles:
 	sheet=readxls(ifile)
 	print plate,rep,drug#,time
 	data=sheet[5:13]
-	data=[ [numerize(val) for val in ln] for ln in data]
+	data=[ [numerize(val) for val in ln if val!=''] for ln in data]# if val!=''
 	#print plate,rep,drug
 
 	for r,ln in IT.izip(['A','B','C','D','E','F','G','H'],data):
@@ -138,4 +138,10 @@ for ifile in ifiles:
 
 
 
-writecsv(output,'4th_screen_bacterial_linear_2.csv',delim=',')
+writecsv(output,'4th_screen_bacterial_linear_fill.csv',delim=',')
+
+
+
+lsy=[['a','1','Cake'],['b','2','Cake'],['a','3','Cake'],['a','1','Cake'],['b','2','Cake']]
+
+
