@@ -220,10 +220,10 @@ micss$MIC<-as.numeric(micss$MIC)
 unique(micss$MIC)
 
 #Calculate averages for Scores and MICs over replicates
-scores_avg<-ddply(scores, .(Gene,Plate,Well,Measure), summarise, Score_avg=mean(Score,na.rm = TRUE),Score_sd=sd(Score,na.rm = TRUE))
+scores_avg<-ddply(scores, .(Gene,Plate,Well,Measure), summarise, Score_avg=mean(Score,na.rm = TRUE),Score_sd=sd(Score,na.rm = TRUE))#,Score_N=length(Well)
 
 #Averaging by gene names and positions
-mics_avg<-ddply(micss, .(Gene,Plate,Well), summarise, MIC_avg=mean(MIC,na.rm = TRUE),MIC_sd=sd(MIC,na.rm = TRUE))
+mics_avg<-ddply(micss, .(Gene,Plate,Well), summarise, MIC_avg=mean(MIC,na.rm = TRUE),MIC_sd=sd(MIC,na.rm = TRUE))#,MIC_N=length(Well)
 
 
 alls<-dcast(scores_avg,Gene+Plate+Well ~Measure,mean,value.var = c('Score_avg'),fill = as.numeric(NA))
@@ -269,8 +269,8 @@ conc<-merge(alls,keioinfo,by=c('Gene','Plate','Well'),all.x=TRUE,all.y=TRUE)
 nodata<-subset(conc,is.na(MIC) & !Gene %in% c('present','WT',NA))
 
 #Needs Keio growth data
-nogrowth<-merge(nodata, keio,by=c('Gene'))
-write.csv(nogrowth,'Data/Excluded.csv')
+#nogrowth<-merge(nodata, keio,by=c('Gene'))
+#write.csv(nogrowth,'Data_final/Excluded.csv')
 
 #Merging by 'Plate','Well' and Gene
 allfull<-merge(alls,mics_avg,by=c('Gene','Plate','Well'),all.x=TRUE,all.y=TRUE)
@@ -465,25 +465,28 @@ bac4all<-subset(bac4all,!(Gene=='oppB' & Replicate==2 & Drug==50))
 bac4all<-subset(bac4all,!(Gene=='oppB' & Replicate==1 & Drug==0))
 
 
-
-
-ggplot(subset(bac4all,Gene=='Blank'),aes(x=OD_raw))+geom_histogram()+
-  facet_grid(Replicate+'Replicate'~'Drug, uM'+Drug)
+# 
+# 
+# ggplot(subset(bac4all,Gene=='Blank'),aes(x=OD_raw))+geom_histogram()+
+#   facet_grid(Replicate+'Replicate'~'Drug, uM'+Drug)
 
 
 back<-mean(subset(bac4all,Gene=='Blank' & OD_raw<0.075)$OD_raw)
 back_sd<-sd(subset(bac4all,Gene=='Blank' & OD_raw<0.075)$OD_raw)
 bac4all$OD<-bac4all$OD_raw-back
 
+bac4sumN<-ddply(bac4all,.(Gene,Plate,Well,Drug),summarise,
+      Replicates=length(Gene))
+
 bac4sum<-dcast(bac4all,Gene+Plate+Well+Nplate+NWell+Drug~Replicate,mean,value.var = c('OD'))
 bac4sum$OD_avg<-apply(bac4sum[,c('1','2','3','4')],1,mean,na.rm=TRUE)
 bac4sum$OD_sd<-apply(bac4sum[,c('1','2','3','4')],1,sd,na.rm=TRUE)
 
-dir.create(ddir, showWarnings = TRUE, recursive = FALSE, mode = "0777")
+#dir.create(ddir, showWarnings = TRUE, recursive = FALSE, mode = "0777")
 write.csv(bac4sum,paste(ddir,'/Bacterial_growth_summary.csv',sep=''))
 
 
-
+head(bac4sum)
 
 # 
 # bacm<-melt(subset(bact,!Gene %in% c('XXXXXXX','no bacteria','empty',''))[,c('Plate','Well','Gene','Drug','X1','X2','X3','X4')],
@@ -660,7 +663,7 @@ write.csv(bacmic,paste(ddir,'/MICs_and_bacterial_growth-All.csv',sep=''))
 write.csv(qbacmicq,paste(ddir,'/MICs_and_bacterial_growth-Clean.csv',sep=''))
 write.csv(qbacmicqd,paste(ddir,'/MICs_and_bacterial_growth-Clean-NoDevDelays.csv',sep=''))
 
-write.csv(remset,'Data/All_removed_from_screen.csv')
+write.csv(remset,'Data_final/All_removed_from_screen.csv')
 
 
 
