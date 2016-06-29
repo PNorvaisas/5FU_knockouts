@@ -12,6 +12,10 @@ library('splitstackshape')
 
 setwd("~/Projects/2015-Metformin/Worms")
 
+capFirst <- function(s) {
+  paste(toupper(substring(s, 1, 1)), substring(s, 2), sep = "")
+}
+
 GOsplit<-function(x,rtrn="GO"){
   if (grepl('~',x)) {
     sep='~'
@@ -90,9 +94,7 @@ read.Annot<-function(flnm,filter=TRUE){
   return(darmm)
 }
 
-capFirst <- function(s) {
-  paste(toupper(substring(s, 1, 1)), substring(s, 2), sep = "")
-}
+
 
 
 odir<-'Figures_final'
