@@ -3,11 +3,7 @@ library('gplots')
 library('plyr')
 library('reshape2')
 library('tidyr')
-#library('Vennerable')
-#library('GOplot')
 library('quantreg')
-#library('KEGGREST')
-#library('devtools')
 library('splitstackshape')
 
 setwd("~/Projects/2015-Metformin/Worms")
@@ -100,8 +96,8 @@ read.Annot<-function(flnm,filter=TRUE){
 odir<-'Figures_final'
 ddir<-'Data_final'
 
-qbacmicq<-read.table(paste(ddir,'/MICs_and_bacterial_growth-Clean-NoDevDelays.csv',sep=''),sep=',',header=TRUE)
-qbacmicq<-qbacmicq[,!colnames(qbacmicq) %in% c('X','JW_id','ECK','X0','X1','X2.5','X5','bno','EG','GI','MOPS_24hr','MOPS_48hr')]
+bacmic<-read.table(paste(ddir,'/MICs_and_bacterial_growth-Complete.csv',sep=''),sep=',',header=TRUE)
+bacmic<-bacmic[,!colnames(bacmic) %in% c('X','JW_id','ECK','X0','X1','X2.5','X5','bno','EG','GI','MOPS_24hr','MOPS_48hr')]
 
 
 ecor<-read.table('../EColi_annotation/EcoCyc_Patwhays.tsv',sep='\t',header=TRUE,stringsAsFactors = FALSE)
@@ -134,15 +130,6 @@ goECm$Category<-paste('GO',as.character(goECm$Ontology),sep='_')
 goECm<-rename(goECm,c('GO_ID'='Term_ID','Freq'='Size'))
 
 
-# 
-# danr<-read.Annot('../EColi_annotation/EColi_Keio_DAVID_GO.txt')
-# dan<-subset(danr,Strain=='eco' & Term_ID!='NA')
-# dan$Strain<-NULL
-# dan$Species<-NULL
-# dan$Gene.Name<-NULL
-# danm<-merge.data.frame(dan,qbacmicq[,c('Gene','UniACC')],by.x='ID',by.y='UniACC',all.x=TRUE)
-#ecocycm<-merge.data.frame(ecocyc,danm[,c('Gene','Gene.Name')],by='Gene')
-
 #Gene set sizes need to be estimated for whole E coli, screened Keio and MIC>5
 
 allannot<-merge(keggm[,c('Term','Size','Gene','Term_ID','Category')],ecocyc,all.x=TRUE,all.y=TRUE)
@@ -155,8 +142,11 @@ allannot<-allannot[,c('Gene','Category','Term_ID','Term','Size_EC')]
 allannot$Term<-capFirst(allannot$Term)
 allannot[allannot$Term=='NANA','Term']<-NA
 
+#Final Allannot
+write.csv(allannot,paste(ddir,'/All_enrichment_terms.csv',sep=''))
 
-circmr<-merge(qbacmicq,allannot, by.x='Gene',by.y='Gene',all.x = TRUE)
+
+circmr<-merge(bacmic,allannot, by.x='Gene',by.y='Gene',all.x = TRUE)
 circmr$Term<-as.factor(circmr$Term)
 circmr$Category<-as.factor(circmr$Category)
 
@@ -167,68 +157,8 @@ circm<-merge(circmr,circsumfull,by=c('Category','Term_ID'),all.x=TRUE)
 
 unique(allannot$Category)
 
-#Enrichment for genes with MIC>5
-circms<-ddply(subset(circm,MIC>5),.(Category,Term_ID),summarise,
-              Size_EC=unique(Size_EC),
-              Size_KeioS=unique(Size_KeioS),
-              Term=unique(Term),
-              Size_MICo5=as.numeric(length(unique(Gene))),
-              MIC_avg_sum=mean(MIC,na.rm = TRUE),MIC_sd_sum=sd(MIC,na.rm = TRUE),
-               MIC_med_sum=median(MIC,na.rm = TRUE),
-               MIC_05_sum=quantile(MIC,probs=c(0.05),na.rm = TRUE),MIC_95_sum=quantile(MIC,probs=c(0.95),na.rm = TRUE),
-               MIC_25_sum=quantile(MIC,probs=c(0.25),na.rm = TRUE),MIC_75_sum=quantile(MIC,probs=c(0.75),na.rm = TRUE),
-               NGM_D_avg_sum=mean(NGM_D,na.rm = TRUE),NGM_D_sd_sum=sd(NGM_D,na.rm = TRUE),
-               NGM_D_med_sum=median(NGM_D,na.rm = TRUE),
-               NGM_D_05_sum=quantile(NGM_D,probs=c(0.05),na.rm = TRUE),NGM_D_95_sum=quantile(NGM_D,probs=c(0.95),na.rm = TRUE),
-               NGM_D_25_sum=quantile(NGM_D,probs=c(0.25),na.rm = TRUE),NGM_D_75_sum=quantile(NGM_D,probs=c(0.75),na.rm = TRUE),
-               NGM_C_avg_sum=mean(NGM_C,na.rm = TRUE),NGM_C_sd_sum=sd(NGM_C,na.rm = TRUE),
-               NGM_C_med_sum=median(NGM_C,na.rm = TRUE),
-               NGM_C_05_sum=quantile(NGM_C,probs=c(0.05),na.rm = TRUE),NGM_C_95_sum=quantile(NGM_C,probs=c(0.95),na.rm = TRUE),
-               NGM_C_25_sum=quantile(NGM_C,probs=c(0.25),na.rm = TRUE),NGM_C_75_sum=quantile(NGM_C,probs=c(0.75),na.rm = TRUE),
-               LB_sum=mean(LB_22hr,na.rm = TRUE),LB_sd_sum=sd(LB_22hr,na.rm = TRUE),
-               LB_med_sum=median(LB_22hr,na.rm = TRUE),
-               LB_05_sum=quantile(LB_22hr,probs=c(0.05),na.rm = TRUE),LB_95_sum=quantile(LB_22hr,probs=c(0.95),na.rm = TRUE),
-               LB_25_sum=quantile(LB_22hr,probs=c(0.25),na.rm = TRUE),LB_75_sum=quantile(LB_22hr,probs=c(0.75),na.rm = TRUE))
-
-
-circms$Coverage_EC<-circms$Size_MICo5/circms$Size_EC
-circms$Coverage_KeioS<-circms$Size_MICo5/circms$Size_KeioS
-circms$Score_EC<-circms$Coverage_EC*circms$MIC_avg_sum
-circms$Score_KeioS<-circms$Coverage_KeioS*circms$MIC_avg_sum
-circms$Score_EC_median<-circms$Coverage_EC*circms$MIC_med_sum
-circms$Score_KeioS_median<-circms$Coverage_KeioS*circms$MIC_med_sum
-
-
-
-enr<-merge(circm,circms[,! colnames(circms) %in% c('Size_EC','Size_KeioS','Term')],by=c('Category','Term_ID'),all.x=TRUE)
-enr[enr=='NaN']<-NA
-dim(enr)
-# enrnames<-read.table('Data_v2/Enrichment_dataset_ref.csv',sep=',')
-# enrnames<-rename(enrnames,c('V2'='Name'))
-# enrnames$Name<-as.character(enrnames$Name)
-# enrnames<-enrnames[enrnames$Name!='x','Name']
-# 
-# try(if(length(intersect(colnames(enr),enrnames))!=44)
-#   stop("Possible change in enrichment dataset!"))
-# enr<-enr[,colnames(enr)[c(1:2,14:15,44,3:13,16:43)]]
-enr<-enr[,c(1:2,14:17,46:51,3,8,4:7,9:13,18:45)]
-dim(enr)
-
-# enr$Coverage_EC<-enr$Size_MICo5/enr$Size_EC
-# enr$Coverage_KeioS<-enr$Size_MICo5/enr$Size_KeioS
-
-
-
-write.csv(allannot,paste(ddir,'/All_enrichment_terms.csv',sep=''))
-write.csv(circms,paste(ddir,'/Distributions_for_terms.csv',sep=''))
-write.csv(enr,paste(ddir,'/Complete_data_term_distribution.csv',sep=''))
-
 
 theme_set(theme_light())
-
-mtres<-1
-gtres<-4
-mttres<-10
 
 Slevel=c(0)
 SAbr=c('all')
@@ -252,20 +182,83 @@ Thraxis<-c('Coverage','Coverage','Score','Score','Score','Score')
 Thresholds<-data.frame(names=Thrnames,cols=Thrcols,axis=Thraxis)
 
 
-Media=c('LB_22hr','NGM_D','NGM_C')
+Media=c('LB_22hr','OD_T_Mean','OD_C_Mean')
 MTitle=c('LB 22hr growth','NGM + 100uM 5FU growth','NGM growth')
 MAbr=c('LB','NGM-5FU','NGM')
-MOrder=c('LB_med_sum','NGM_D_med_sum','NGM_C_med_sum')
-MQvars=c('LB','NGM_D','NGM_C')
+MOrder=c('LB_med_sum','OD_T_Mean_med_sum','OD_C_Mean_med_sum')
+MQvars=c('LB','OD_T_Mean','OD_C_Mean')
 MScale=c(1,0.3,0.3)
 Medias<-data.frame(media=Media,mtitle=MTitle,mabr=MAbr,morder=MOrder,mscale=MScale,mqvars=MQvars)
 
+
+#Enrichment for genes with MIC>smth
+#micthres<-5
+#MIC thres in figures
+mtres<-1
+#Number of genes thres
+gtres<-3
+#MIC avg thres
+mttres<-10
+
+
+
+#for (micthres in c(5)){
+micthres<-5
+circms<-ddply(subset(circm,MIC>micthres),.(Category,Term_ID),summarise,
+              Size_EC=unique(Size_EC),
+              Size_KeioS=unique(Size_KeioS),
+              Term=unique(Term),
+              Size_MICo5=as.numeric(length(unique(Gene))),
+              MIC_avg_sum=mean(MIC,na.rm = TRUE),MIC_sd_sum=sd(MIC,na.rm = TRUE),
+              MIC_med_sum=median(MIC,na.rm = TRUE),
+              MIC_05_sum=quantile(MIC,probs=c(0.05),na.rm = TRUE),MIC_95_sum=quantile(MIC,probs=c(0.95),na.rm = TRUE),
+              MIC_25_sum=quantile(MIC,probs=c(0.25),na.rm = TRUE),MIC_75_sum=quantile(MIC,probs=c(0.75),na.rm = TRUE),
+              OD_T_Mean_avg_sum=mean(OD_T_Mean,na.rm = TRUE),OD_T_Mean_sd_sum=sd(OD_T_Mean,na.rm = TRUE),
+              OD_T_Mean_med_sum=median(OD_T_Mean,na.rm = TRUE),
+              OD_T_Mean_05_sum=quantile(OD_T_Mean,probs=c(0.05),na.rm = TRUE),OD_T_Mean_95_sum=quantile(OD_T_Mean,probs=c(0.95),na.rm = TRUE),
+              OD_T_Mean_25_sum=quantile(OD_T_Mean,probs=c(0.25),na.rm = TRUE),OD_T_Mean_75_sum=quantile(OD_T_Mean,probs=c(0.75),na.rm = TRUE),
+              OD_C_Mean_avg_sum=mean(OD_C_Mean,na.rm = TRUE),OD_C_Mean_sd_sum=sd(OD_C_Mean,na.rm = TRUE),
+              OD_C_Mean_med_sum=median(OD_C_Mean,na.rm = TRUE),
+              OD_C_Mean_05_sum=quantile(OD_C_Mean,probs=c(0.05),na.rm = TRUE),OD_C_Mean_95_sum=quantile(OD_C_Mean,probs=c(0.95),na.rm = TRUE),
+              OD_C_Mean_25_sum=quantile(OD_C_Mean,probs=c(0.25),na.rm = TRUE),OD_C_Mean_75_sum=quantile(OD_C_Mean,probs=c(0.75),na.rm = TRUE),
+              LB_sum=mean(LB_22hr,na.rm = TRUE),LB_sd_sum=sd(LB_22hr,na.rm = TRUE),
+              LB_med_sum=median(LB_22hr,na.rm = TRUE),
+              LB_05_sum=quantile(LB_22hr,probs=c(0.05),na.rm = TRUE),LB_95_sum=quantile(LB_22hr,probs=c(0.95),na.rm = TRUE),
+              LB_25_sum=quantile(LB_22hr,probs=c(0.25),na.rm = TRUE),LB_75_sum=quantile(LB_22hr,probs=c(0.75),na.rm = TRUE))
+
+
+circms$Coverage_EC<-circms$Size_MICo5/circms$Size_EC
+circms$Coverage_KeioS<-circms$Size_MICo5/circms$Size_KeioS
+circms$Score_EC<-circms$Coverage_EC*circms$MIC_avg_sum
+circms$Score_KeioS<-circms$Coverage_KeioS*circms$MIC_avg_sum
+circms$Score_EC_median<-circms$Coverage_EC*circms$MIC_med_sum
+circms$Score_KeioS_median<-circms$Coverage_KeioS*circms$MIC_med_sum
+
+
+
+enr<-merge(circm,circms[,! colnames(circms) %in% c('Size_EC','Size_KeioS','Term')],by=c('Category','Term_ID'),all.x=TRUE)
+enr[enr=='NaN']<-NA
+dim(enr)
+
+
+#enr<-enr[,c(1:2,14:17,46:51,3,8,4:7,9:13,18:45)]
+
+
+#circms_re<-circms[,c(1:2,5,3:4,6,35:40,7:34)]
+
+
+#write.csv(circms_re,paste(ddir,'/Distributions_for_terms_MICo',micthres,'.csv',sep=''))
+#write.csv(enr,paste(ddir,'/Complete_data_term_distribution_MICo',micthres,'.csv',sep=''))
+
+
 #Create necessary directories
-dir.create(paste(odir,'/Enrichment',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
+envar<-paste('Enrichment_MICo',micthres,sep='')
+dir.create(paste(odir,'/',envar,sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
 
 
 ##Coverage
-dir.create(paste(odir,'/Enrichment/Coverage',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
+print('Coverage')
+dir.create(paste(odir,'/',envar,'/Coverage',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
 for(m in 1:nrow(Thresholds)) {
   mr<-Thresholds[m,]
   for(s in 1:nrow(Stat)) {
@@ -274,11 +267,12 @@ for(m in 1:nrow(Thresholds)) {
       tr <- Types[t,]
       sel<-subset(circms,Category==as.character(tr$tname)  &
                     Size_MICo5>gtres & ! is.na(Term) &
-                    ! Term %in% c('Metabolic pathways','Biosynthesis of secondary metabolites',
+                    ! Term %in% c('Metabolic pathways',
+                                  'Biosynthesis of secondary metabolites',
                                   'Microbial metabolism in diverse environments'))
       #& logp_sum>2 & logp_sum>2  & logp_sum>2  & logp_sum>2
-      gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,' - ',mr$names,sep = '')
-      fname<-paste(odir,'/Enrichment/Coverage/',tr$tabr,'_',mr$cols,'.pdf',sep = '')
+      gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,' - ',mr$names,' MIC>',micthres,sep = '')
+      fname<-paste(odir,'/',envar,'/Coverage/',tr$tabr,'_',mr$cols,'_MICo',micthres,'.pdf',sep = '')
       print(gtitle)
       print(fname)
       termBG<-ggplot(sel,
@@ -302,33 +296,35 @@ for(m in 1:nrow(Thresholds)) {
 }
 
 ##Growth distributions
-dir.create(paste(odir,'/Enrichment/Bacterial_growth',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
+print('Growth distributions')
+dir.create(paste(odir,'/',envar,'/Bacterial_growth',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
 for(m in 1:nrow(Medias)) {
   mr<-Medias[m,]
   for(s in 1:nrow(Stat)) {
     sr <- Stat[s,]
     for(t in 1:nrow(Types)) {
       tr <- Types[t,]
+      #print(mr$media)
+      #print(tr$tname)
       sel<-subset(enr,Category==as.character(tr$tname) & !is.na(enr[,as.character(mr$media)])  &
                     MIC>mtres & Size_MICo5>gtres & MIC_avg_sum>mttres &
-                    ! is.na(Term) &
-                    ! Term %in% c('Metabolic pathways',
-                                  'Biosynthesis of secondary metabolites','Microbial metabolism in diverse environments'))
-      #& logp_sum>2 & logp_sum>2  & logp_sum>2  & logp_sum>2
-      gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,' - ',mr$mtitle,' distribution, ',sr$sabr,sep = '')
-      fname<-paste(odir,'/Enrichment/Bacterial_growth/',tr$tabr,'_BG_',mr$mabr,'_',sr$sabr,'.pdf',sep = '')
+                    !is.na(Term) &! Term %in% c('Metabolic pathways',
+                                                 'Biosynthesis of secondary metabolites',
+                                                 'Microbial metabolism in diverse environments'))
+      gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,' - ',mr$mtitle,' distribution, ',sr$sabr,' MIC>',micthres,sep = '')
+      fname<-paste(odir,'/',envar,'/Bacterial_growth/',tr$tabr,'_BG_',mr$mabr,'_',sr$sabr,'_MICo',micthres,'.pdf',sep = '')
       print(gtitle)
       print(fname)
-      termBG<-ggplot(sel,
-                     aes(y=sel[,as.character(mr$media)],x=reorder(sel$Term,sel[,as.character(mr$morder)]),
-                         fill=Size_MICo5,color=MIC_avg_sum))+
+      termBG<-ggplot(sel,aes(y=sel[,as.character(mr$media)],
+                             x=reorder(sel$Term,sel[,as.character(mr$morder)]),
+                             fill=Size_MICo5,color=MIC_avg_sum))+
         geom_boxplot(position='identity')+
         coord_flip()+labs(fill='Number of genes',color='MIC average')+
         scale_fill_gradient( high="red",low='white')+
         scale_color_gradient(limits=c(0,100), high="blue",low='gray')+
         ylab('OD')+ylim(0,mr$mscale)+
         xlab(tr$ttitle)+ggtitle(gtitle)
-      #termBG
+      termBG
       cairo_pdf(fname,width=9,height=9)
       print(termBG)
       dev.off()
@@ -341,15 +337,20 @@ for(m in 1:nrow(Medias)) {
 }
 
 ##MIC distributions
-dir.create(paste(odir,'/Enrichment/MIC',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
+print('MIC distributions')
+dir.create(paste(odir,'/',envar,'/MIC',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
 for(s in 1:nrow(Stat)) {
   sr <- Stat[s,]
   for(t in 1:nrow(Types)) {
     tr <- Types[t,]
-    sel<-subset(enr,Category==as.character(tr$tname) & MIC>mtres & Size_MICo5>gtres& MIC_avg_sum>mttres)
+    sel<-subset(enr,Category==as.character(tr$tname) & MIC>mtres & Size_MICo5>gtres&
+                  MIC_avg_sum>mttres &!is.na(Term) &
+                  ! Term %in% c('Metabolic pathways',
+                                'Biosynthesis of secondary metabolites',
+                                'Microbial metabolism in diverse environments'))
     #& logp_sum>2 & logp_sum>2  & logp_sum>2  & logp_sum>2
-    gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,' - MIC distribution, ',sr$sabr,sep = '')
-    fname<-paste(odir,'/Enrichment/MIC/',tr$tabr,'_MIC_',sr$sabr,'.pdf',sep = '')
+    gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,' - MIC distribution, ',sr$sabr,' MIC>',micthres,sep = '')
+    fname<-paste(odir,'/',envar,'/MIC/',tr$tabr,'_MIC_',sr$sabr,'_MICo',micthres,'.pdf',sep = '')
     print(gtitle)
     print(fname)
     termMIC<-ggplot(sel,
@@ -369,40 +370,38 @@ for(s in 1:nrow(Stat)) {
 
 
 
-Media2=c('LB_22hr','NGM_D','NGM_C')
+Media2=c('LB_22hr','OD_T_Mean','OD_C_Mean')
 MTitle2=c('LB 22hr growth','NGM + 100uM 5FU growth','NGM growth')
 MAbr2=c('LB','NGM-5FU','NGM')
-MOrder2=c('LB_med_sum','NGM_D_med_sum','NGM_C_med_sum')
-MQvars2=c('LB','NGM_D','NGM_C')
+MOrder2=c('LB_med_sum','OD_T_Mean_med_sum','OD_C_Mean_med_sum')
+MQvars2=c('LB','OD_T_Mean','OD_C_Mean')
 MScale2=c(1,0.2,0.4)
 Medias2<-data.frame(media=Media2,mtitle=MTitle2,mabr=MAbr2,morder=MOrder2,mscale=MScale2,mqvars=MQvars2)
 
 ##MIC vs Media
-dir.create(paste(odir,'/Enrichment/MICvsOD',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
+dir.create(paste(odir,'/',envar,'/MICvsOD',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
+print('MIC vs Media')
 for(m in 1:nrow(Medias2)) {
   mr<-Medias2[m,]
   for(s in 1:nrow(Stat)) {
     sr <- Stat[s,]
     for(t in 1:nrow(Types)) {
       tr <- Types[t,]
-#       if (mr$mqvars=='LB') {
-#         sel<-subset(circms,category==as.character(tr$tname) & strain=='eco' & logp_sum>sr$slevel)
-#       } else {
-#         sel<-subset(circms,category==as.character(tr$tname) & strain=='eco' & logp_sum>sr$slevel)
-#       }
-      sel<-subset(enr,Category==as.character(tr$tname) & !is.na(enr[,paste(mr$mqvars,'_med_sum',sep='')] ) &MIC>mtres & Size_MICo5>gtres& MIC_avg_sum>mttres)
-      #& logp_sum>2 & logp_sum>2  & logp_sum>2  & logp_sum>2
-      gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,': MIC',' - ',mr$mtitle,' distribution, ',sr$sabr,sep = '')
-      fname<-paste(odir,'/Enrichment/MICvsOD/',tr$tabr,'_MIC_vs_BG_',mr$mabr,'_',sr$sabr,'.pdf',sep = '')
+      sel<-subset(enr,Category==as.character(tr$tname) &
+                    !is.na(enr[,paste(mr$mqvars,'_med_sum',sep='')] ) &
+                    MIC>mtres & Size_MICo5>gtres& MIC_avg_sum>mttres)
+
+      gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,': MIC',' - ',mr$mtitle,' distribution, ',sr$sabr,' MIC>',micthres,sep = '')
+      fname<-paste(odir,'/',envar,'/MICvsOD/',tr$tabr,'_MIC_vs_BG_',mr$mabr,'_',sr$sabr,'_MICo',micthres,'.pdf',sep = '')
       print(gtitle)
       print(fname)
       kpcor<-ggplot(sel,
                     aes(x=MIC_med_sum,y=sel[,paste(as.character(mr$mqvars),'_med_sum',sep='')],color=Size_MICo5))+
         geom_point()+
         geom_errorbarh(aes(xmax=MIC_75_sum,
-                                      xmin=MIC_25_sum),height=mr$mscale*0.0125,alpha=0.5)+
+                           xmin=MIC_25_sum),height=mr$mscale*0.0125,alpha=0.5)+
         geom_errorbar(aes(ymax=sel[,paste(mr$mqvars,'_75_sum',sep='')],
-                                     ymin=sel[,paste(mr$mqvars,'_25_sum',sep='')]),width=1,alpha=0.5)+
+                          ymin=sel[,paste(mr$mqvars,'_25_sum',sep='')]),width=1,alpha=0.5)+
         geom_text(aes(label=Term),color='black',hjust=-0.1, vjust=-0.5,size=3)+
         scale_color_gradient(limits=c(0,8), high="blue",low='gray')+
         labs(color='Number of genes')+
@@ -411,35 +410,33 @@ for(m in 1:nrow(Medias2)) {
       cairo_pdf(fname,width=9,height=9)
       print(kpcor)
       dev.off()
-      #aes(size=Size_MICo5)
-      #ggsave(plot=termBG,file=fname,width=9,height=9)
-      #dev.copy2pdf(device=cairo_pdf,file=fname,width=12,height=12)
     }
   }
 }
 
-fitbac<-lm(NGM_D ~ NGM_C,data=qbacmicq)
-confint(fitbac,'NGM_C',level=0.95)
+fitbac<-lm(OD_T_Mean ~ OD_C_Mean,data=bacmic)
+confint(fitbac,'OD_C_Mean',level=0.95)
 
-dir.create(paste(odir,'/Enrichment/NGMvsNGM-5FU',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
+dir.create(paste(odir,'/',envar,'/NGMvsNGM-5FU',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
+print('NGMvsNGM-5FU')
 for(s in 1:nrow(Stat)) {
   sr <- Stat[s,]
   for(t in 1:nrow(Types)) {
     tr <- Types[t,]
-        
-    sel<-subset(enr,Category==as.character(tr$tname) & MIC>mtres & Size_MICo5>gtres& MIC_avg_sum>mttres)
+    
+    sel<-subset(enr,Category==as.character(tr$tname) & MIC>mtres & Size_MICo5>gtres & MIC_avg_sum>mttres)
     #& logp_sum>2 & logp_sum>2  & logp_sum>2  & logp_sum>2
-    gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,': NGM - NGM + 100um 5FU correlation, ',sr$sabr,sep = '')
-    fname<-paste(odir,'/Enrichment/NGMvsNGM-5FU/',tr$tabr,'_NGM_vs_NGM-5FU_',sr$sabr,'.pdf',sep = '')
+    gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,': NGM - NGM + 100um 5FU correlation, ',sr$sabr,' MIC>',micthres,sep = '')
+    fname<-paste(odir,'/',envar,'/NGMvsNGM-5FU/',tr$tabr,'_NGM_vs_NGM-5FU_',sr$sabr,'_MICo',micthres,'.pdf',sep = '')
     print(gtitle)
     print(fname)
-    kpcor<-ggplot(sel,aes(x=NGM_C_med_sum,y=NGM_D_med_sum,color=MIC_avg_sum))+
+    kpcor<-ggplot(sel,aes(x=OD_C_Mean_med_sum,y=OD_T_Mean_med_sum,color=MIC_avg_sum))+
       geom_point(aes(size=Size_MICo5))+
       geom_abline(aes(fill='1:1'),intercept=0,slope=1,alpha=0.5,color='grey',linetype='longdash')+
       geom_abline(aes(fill='Trend for all knockouts'),intercept=coef(fitbac)[[1]],
                   slope=coef(fitbac)[[2]],alpha=0.5,color='red')+
-      geom_errorbarh(aes(xmax=NGM_C_75_sum,xmin=NGM_C_25_sum),height=0.15*0.0125,alpha=0.5)+
-      geom_errorbar(aes(ymax=NGM_D_75_sum,ymin=NGM_D_25_sum),width=0.2*0.0125,alpha=0.5)+
+      geom_errorbarh(aes(xmax=OD_C_Mean_75_sum,xmin=OD_C_Mean_25_sum),height=0.15*0.0125,alpha=0.5)+
+      geom_errorbar(aes(ymax=OD_T_Mean_75_sum,ymin=OD_T_Mean_25_sum),width=0.2*0.0125,alpha=0.5)+
       geom_text(aes(label=Term),color='black',hjust=-0.1, vjust=-0.5,size=3)+
       labs(size='Number of genes',color='MIC average')+
       xlab('OD, NGM - Control')+
@@ -452,52 +449,9 @@ for(s in 1:nrow(Stat)) {
     #      scale_color_gradient(limits=c(0,8), high="blue",low='gray')+ ,fill='Guides'
   }
 }
+  
+#}
 
 
-
-#ggsave(plot=termBG,file=fname,width=9,height=9)
-#dev.copy2pdf(device=cairo_pdf,file=fname,width=12,height=12)
-
-
-# 
-# circgo<-subset(circm,category %in% c('KP','BP'))
-# 
-# GOBar(subset(circgo, category == 'KP'))
-# GOBar(circgo, display = 'multiple')
-# GOBar(subset(circgo,adj_pval>0.01), display = 'multiple')
-# GOBubble(circgo, title = 'Bubble plot', color = c('deeppink', 'blue', 'chartreuse1'), display = 'multiple', labels = 4)
-# GOBubble(circgo)
-# circgo<-subset(circgo,adj_pval<0.01 & count>4)
-# GOCircle(subset(circgo, category == 'BP'))
-# #dev.copy2pdf(device=cairo_pdf,file="GO/GO_AUCnorm_All.pdf",width=12,height=8)
-# 
-# BP<-unique(subset(circgo, category == 'BP' & count>4)[,c('ID','term','adj_pval','zscore')])$ID
-# CC<-unique(subset(circgo, category == 'CC' & count>4)[,c('ID','term','adj_pval','zscore')])$ID
-# GOCircle(circgo,nsub=c(CC[1],BP[1:9]))
-# 
-# GOCircle(subset(circgo,zscore<0 & category == 'BP'))
-# #dev.copy2pdf(device=cairo_pdf,file="GO/GO_AUCnorm_All.pdf",width=12,height=8)
-# GOCircle(subset(circgo,zscore>0 & category == 'BP'))
-# #dev.copy2pdf(device=cairo_pdf,file="GO/GO_Peak_UP.pdf",width=12,height=8)
-# 
-# #circ<-subset(circ,category=='BP')
-# 
-# 
-# MIC_top<-unique(circ[with(circ,order(logFC,decreasing=TRUE)),]$genes)[1:10]
-# genes_bottom<-unique(circ[with(circ,order(logFC,decreasing=FALSE)),]$genes)[1:10]
-# 
-# 
-# BP_top<-as.character(unique(subset(circgo, category == 'BP' & count>4)[,c('ID','term','adj_pval','zscore')]$term))
-# KP_top<-as.character(unique(subset(circgo, category == 'KP' & count>4)[,c('ID','term','adj_pval','zscore')]$term))
-# 
-# 
-# chord <- chord_dat(circgo, process=KP_top[1:10])
-# chord <- chord_dat(circgo, process=BP_top[1:10])
-# GOChord(chord, space = 0.02, gene.space = 0.25, gene.size = 5)
-# #dev.copy2pdf(device=cairo_pdf,file="GO/GO_AUCnorm_All_circle.pdf",width=16,height=16)
-# 
-# GOCluster(circ, KP_top[1:4], clust.by = 'term', term.width = 2)
-# 
-# 
 
 

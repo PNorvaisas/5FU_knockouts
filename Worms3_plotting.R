@@ -12,6 +12,17 @@ library(sp)
 
 #library(quantreg)
 
+lmsum<-function(m){fres<-summary(m)
+l <- list(b = as.double(coef(m)[1], digits = 2),
+          a = as.double(coef(m)[2], digits = 2),
+          r2 = as.double(summary(m)$r.squared, digits = 3),
+          p2 = as.double(pf(fres$fstatistic[1], fres$fstatistic[2], fres$fstatistic[3],lower.tail = FALSE)[[1]], digits = 5))
+return(l)
+}
+
+trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+
+
 elipsoid=function(df,xvar,yvar,scale=1,groups=''){
   df<-subset(df,!is.na(df[,xvar]) &!is.na(df[,yvar]))
   df_ell <- data.frame()
@@ -42,12 +53,18 @@ lm_eqn = function(m) {
             p2 = format(pf(fres$fstatistic[1], fres$fstatistic[2], fres$fstatistic[3],lower.tail = FALSE)[[1]], digits = 2,scientific=TRUE));
   
   if (coef(m)[2] >= 0)  {
-    eq <- substitute(italic(y) == b + a %.% italic(x)*","~~italic(r)^2~"="~r2*","~~italic(p)~"="~p2,l)
+    cof <- substitute(italic(y) == b + a %.% italic(x),l)
+    full <- substitute(italic(y) == b + a %.% italic(x)*","~~italic(r)^2~"="~r2*","~~italic(p)~"="~p2,l)
   } else {
-    eq <- substitute(italic(y) == b - a %.% italic(x)*","~~italic(r)^2~"="~r2*","~~italic(p)~"="~p2,l)    
+    cof <- substitute(italic(y) == b - a %.% italic(x),l) 
+    full <- substitute(italic(y) == b - a %.% italic(x)*","~~italic(r)^2~"="~r2*","~~italic(p)~"="~p2,l)
   }
   
-  as.character(as.expression(eq));                 
+  stat<-substitute(italic(r)^2~"="~r2*","~~italic(p)~"="~p2,l)
+  return(list('Coef'=as.character(as.expression(cof)),
+              'Stat'=as.character(as.expression(stat)),
+              'Full'=as.character(as.expression(full)),
+              'Atop'=as.character(as.expression(paste(cof,'\n',stat,sep='') ))))                 
 }
 
 lm_rp = function(m) {
@@ -105,107 +122,81 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
 odir<-'Figures_final'
 ddir<-'Data_final'
 
-#qbacmicq - no outliers
-bacmic<-read.table(paste(ddir,'/MICs_and_bacterial_growth-All.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
-qbacmicq<-read.table(paste(ddir,'/MICs_and_bacterial_growth-Clean.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
+#bacmic - no outliers
+bacmic<-read.table(paste(ddir,'/MICs_and_bacterial_growth-Complete.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
 
 
 #
-bcq05<-quantile(bacmic$NGM_C,0.05,na.rm=TRUE)[[1]]
-bcq95<-quantile(bacmic$NGM_C,0.95,na.rm=TRUE)[[1]]
-bdq05<-quantile(bacmic$NGM_D,0.05,na.rm=TRUE)[[1]]
-bdq95<-quantile(bacmic$NGM_D,0.95,na.rm=TRUE)[[1]]
+bcq05<-quantile(bacmic$OD_C_Mean,0.05,na.rm=TRUE)[[1]]
+bcq95<-quantile(bacmic$OD_C_Mean,0.95,na.rm=TRUE)[[1]]
+bdq05<-quantile(bacmic$OD_T_Mean,0.05,na.rm=TRUE)[[1]]
+bdq95<-quantile(bacmic$OD_T_Mean,0.95,na.rm=TRUE)[[1]]
 blq05<-quantile(bacmic$LB_22hr,0.05,na.rm=TRUE)[[1]]
 blq95<-quantile(bacmic$LB_22hr,0.95,na.rm=TRUE)[[1]]
 
-fitbac<-lm(NGM_D ~ NGM_C,data=bacmic)
+fitbac<-lm(OD_T_Mean ~ OD_C_Mean,data=bacmic)
 #confint(fitbac,'(Intercept)',level=0.95)[[2]]
 #coefficients(fitbac)[[2]]
 
-fitqr<-rq(NGM_D ~ NGM_C,data=bacmic,tau=c(0.05,0.95))
+fitqr<-rq(OD_T_Mean ~ OD_C_Mean,data=bacmic,tau=c(0.05,0.95))
 bgli<-coefficients(fitqr)[1,][[1]]
 bgui<-coefficients(fitqr)[1,][[2]]
 bgls<-coefficients(fitqr)[2,][[1]]
 bgus<-coefficients(fitqr)[2,][[2]]
 
 
-bacres<-subset(bacmic,NGM_D>NGM_C*bgus+bgui)
-bacsens<-subset(bacmic,NGM_D<NGM_C*bgls+bgli)
+bacres<-subset(bacmic,OD_T_Mean>OD_C_Mean*bgus+bgui)
+bacsens<-subset(bacmic,OD_T_Mean<OD_C_Mean*bgls+bgli)
 
 
 theme_set(theme_light())
 showgenes<-c('upp','dcuC','yjjG')
+brks<-c(0,5,10,25,50,100)
+micname<-expression(paste('Worm MIC [5FU], ',mu,'M',sep=''))
+mrklist<-c('upp','WT','yjjG')
 WTdata<-subset(bacmic,Gene=='WT')
 #size=0.5
-baccor<-ggplot(bacmic,aes(x=NGM_C,y=NGM_D,color=MIC))+
-  geom_point(size=2,alpha=0.8)+
-  scale_colour_gradientn(colours = c('grey80','grey80','purple','purple','blue'),
-                         breaks=c(0,25,50,75,100),limits=c(0,100))+
-  geom_abline(intercept=0,slope=1,alpha=0.5,aes(color='grey'),linetype='longdash')+
-  geom_errorbarh(aes(xmax=NGM_C+NGM_sd_C,xmin=NGM_C-NGM_sd_C),height=.001,alpha=0.2)+
-  geom_errorbar(aes(ymax=NGM_D+NGM_sd_D,ymin=NGM_D-NGM_sd_D),width=0.001,alpha=0.2)+
+baccor<-ggplot(bacmic,aes(x=OD_C_Mean,y=OD_T_Mean))+
+  geom_abline(intercept=0,slope=1,alpha=0.1,aes(color='grey'),linetype='longdash',size=0.5)+
+  geom_errorbarh(aes(xmax=OD_C_Mean+OD_C_SD,xmin=OD_C_Mean-OD_C_SD),height=.001,alpha=0.2)+
+  geom_errorbar(aes(ymax=OD_T_Mean+OD_T_SD,ymin=OD_T_Mean-OD_T_SD),width=0.001,alpha=0.2)+
+  geom_point(aes(size=MIC,colour=MIC),alpha=0.7)+
   geom_abline(intercept=bgli,slope=bgls,alpha=0.5,color='red')+
   geom_abline(intercept=bgui,slope=bgus,alpha=0.5,color='red')+
   annotate("text", 0.35,0.35*bgls+bgli+0.005, label = "5%",color='red',size=5)+
   annotate("text", 0.35,0.35*bgus+bgui+0.005, label = "95%",color='red',size=5)+
   scale_x_continuous(breaks=seq(0,.35,by=.05),limits=c(0,0.35))+
   scale_y_continuous(breaks=seq(0,.25,by=.05),limits=c(0,.25))+
-  labs(color=expression(paste('Worm MIC [5FU], ',mu,'M',sep='')))+
-  #labs(size=expression(paste('MIC [5FU], ',mu,'M')))+
-  #scale_colour_gradient(limits=c(5,100), high='blue',low='grey')+
-  annotate('text',x = 0.125, y = 0.24, label = lm_eqn(fitbac), parse = TRUE)+
+  annotate('text',x = 0.125, y = 0.24, label = lm_eqn(fitbac)$Full, parse = TRUE)+
   stat_smooth(aes(group = 1),method = "lm")+
-  geom_text(aes(label=ifelse(NGM_D>NGM_C*bgus+bgui+0.02 | NGM_D < NGM_C*bgls+bgli-0.04|Gene=='WT' ,as.character(Gene),'')),
+  geom_text(aes(label=ifelse(Gene %in% mrklist,as.character(Gene),'')),
             hjust=-0.1, vjust=-0.1,size=5,colour = "red")+
-#   geom_segment(aes(x=0.28+0.05, xend=0.28, y=0.18-0.05, yend=0.18),
-#                arrow=arrow(length=unit(3, "mm")),color='red',alpha=0.5)+
-# annotate("text", 0.28+0.06,0.18-0.055, label = "WT",color='red',size=5)+
+  scale_colour_gradientn(colours = c('black','orange','red','red'),
+                         breaks=brks,limits=c(5,100),guide='legend',name=micname)+
+  scale_size(range=c(1,6),breaks=brks,name=micname)+
   ylab(expression(paste('Bacterial growth OD600nm - 50',mu,'M 5FU')))+
   xlab('Bacterial growth OD600nm - Control')+
-  ggtitle(expression(paste('Bacterial growth in NGM 24hr - Control vs 50',mu,'M 5FU treatment')))
+  ggtitle(expression(paste('Bacterial growth in NGM 24hr - Control vs 50',mu,'M 5FU treatment')))+
+  guides(color=guide_legend(), size = guide_legend())
 baccor
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Control-Treatment_NGM_growth.pdf",sep = ''),
              width=9,height=6)
 
-##  geom_segment(WTdata,aes(x=NGM_C+0.05, xend=NGM_C, y=NGM_D+0.05, yend=NGM_D))+
+#OD_T_Mean>OD_C_Mean*bgus+bgui+0.02 |
+#OD_T_Mean < OD_C_Mean*bgls+bgli-0.04|
+  
 
-# In the 4th screen 50uM 5FU was used instead of 100uM
-# 
-# bac3cor<-ggplot(subset(bacmic,Gene %in% bac3m$Gene),aes(x=NGM_C,y=NGM_D,color=MIC))+
-#   geom_point(size=1)+ylim(0, .25)+
-#   ylab(expression(paste('Knockout strain growth OD - 100',mu,'M 5FU')))+
-#   xlab('Knockout strain growth OD - Control')+
-#   ggtitle(expression(paste('Growth of knockout strains in control and 100',mu,'M 5FU treatment')))+
-#   #stat_smooth(aes(group = 1),method = "lm")+
-#   geom_abline(intercept=0,slope=1,alpha=0.5,aes(color='grey'),linetype='longdash')+
-#   #geom_text(aes(label=ifelse(NGM_D>NGM_C*bgus+bgui | NGM_D < NGM_C*bgls+bgli | NGM_C<0.03 ,as.character(Gene),'')),
-#   #          hjust=-0.1, vjust=-0.1,size=3)+
-#   geom_text(aes(label=Gene))+
-#   geom_errorbarh(aes(xmax=NGM_C+NGM_sd_C,xmin=NGM_C-NGM_sd_C),height=.001,alpha=0.2)+
-#   geom_errorbar(aes(ymax=NGM_D+NGM_sd_D,ymin=NGM_D-NGM_sd_D),width=0.001,alpha=0.2)+
-#   #geom_abline(intercept=bgli,slope=bgls,alpha=0.5,color='red')+
-#   #geom_abline(intercept=bgui,slope=bgus,alpha=0.5,color='red')+
-#   #annotate("text", 0.25,0.25*bgls+bgli+0.005, label = "5%",color='red')+
-#   #annotate("text", 0.25,0.25*bgus+bgui+0.005, label = "95%",color='red')+
-#   scale_x_continuous(breaks=seq(0,.3,by=.05))+
-#   #labs(color='Screen')+
-#   labs(color=expression(paste('MIC [5FU], ',mu,'M')))+
-#   annotate('text',x = 0.125, y = 0.25, label = lm_eqn(fitbac), parse = TRUE)
-# bac3cor
-# dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Control-Treatment_NGM_growth_3rd_Screen.pdf",sep = ''),width=9,height=9)
-
-
-
-bacmed<-melt(bacmic[,colnames(bacmic) %in% c('Gene','NGM_C','NGM_D','LB_22hr','MOPS_24hr','MOPS_48hr')],
+bacmed<-melt(bacmic[,colnames(bacmic) %in% c('Gene','OD_C_Mean','OD_T_Mean','LB_22hr','MOPS_24hr','MOPS_48hr')],
              id=c('Gene'),variable.name = 'Media',value.name='OD')
-bacmed$Media<-factor(bacmed$Media,levels = c('NGM_C','NGM_D','LB_22hr','MOPS_24hr','MOPS_48hr'),
+bacmed$Media<-factor(bacmed$Media,levels = c('OD_C_Mean','OD_T_Mean','LB_22hr','MOPS_24hr','MOPS_48hr'),
                      labels=c('NGM - 24h','NGM + 50uM 5FU','LB - 22hr','MOPS - 24hr','MOPS - 48hr'))
-bacmed<-subset(bacmed,!Media %in% c('MOPS - 48hr')) #, 'MOPS - 48hr'
+bacmed<-subset(bacmed,!Media %in% c('MOPS - 48hr','MOPS - 24hr')) #, 'MOPS - 48hr'
 
 bachist<-ggplot(bacmed,aes(x=OD,fill=Media))+
-  geom_histogram(aes(y=0.01*..density..),position='identity',alpha=0.5,binwidth = 0.02)+
+  geom_histogram(aes(y=0.01*..density..),position='identity',alpha=0.5,binwidth = 0.1)+
   labs(fill='Media')+xlab('OD')+ylab('')+
-  scale_y_continuous(limits=c(0,0.10), labels = scales::percent)+
+  scale_y_continuous(limits=c(0,0.075), labels = scales::percent)+
+  scale_x_continuous(breaks=seq(0,1.1,by=.1))+
   ggtitle('Distribution of strain growth')
 bachist
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bac_growth_disribution.pdf",sep=''),width=9,height=9)
@@ -223,46 +214,63 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bac_growth_disribution.pdf",sep=
 #              file=paste(odir,"/MIC-NGMTreatment_bac_growth_NoLabels.pdf",sep=''),width=5,height=5)
 # 
 # 
-# mbcDl+geom_path(data=df_MIC_D, aes(x=MIC, y=NGM_D), size=1, linetype=1,color='red',alpha=0.2)
+# mbcDl+geom_path(data=df_MIC_D, aes(x=MIC, y=OD_T_Mean), size=1, linetype=1,color='red',alpha=0.2)
 # dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC-NGMTreatment_bac_growth_Linear_SD-elipse.pdf",sep=''),width=5,height=5)
 # 
 
 
-bdqq05<-quantile(qbacmicq$NGM_D,0.05,na.rm=TRUE)[[1]]
-bdqq95<-quantile(qbacmicq$NGM_D,0.95,na.rm=TRUE)[[1]]
-bcqq05<-quantile(qbacmicq$NGM_C,0.05,na.rm=TRUE)[[1]]
-bcqq95<-quantile(qbacmicq$NGM_C,0.95,na.rm=TRUE)[[1]]
-blqq05<-quantile(qbacmicq$LB_22hr,0.05,na.rm=TRUE)[[1]]
-blqq95<-quantile(qbacmicq$LB_22hr,0.95,na.rm=TRUE)[[1]]
+bdqq05<-quantile(bacmic$OD_T_Mean,0.05,na.rm=TRUE)[[1]]
+bdqq95<-quantile(bacmic$OD_T_Mean,0.95,na.rm=TRUE)[[1]]
+bcqq05<-quantile(bacmic$OD_C_Mean,0.05,na.rm=TRUE)[[1]]
+bcqq95<-quantile(bacmic$OD_C_Mean,0.95,na.rm=TRUE)[[1]]
+blqq05<-quantile(bacmic$LB_22hr,0.05,na.rm=TRUE)[[1]]
+blqq95<-quantile(bacmic$LB_22hr,0.95,na.rm=TRUE)[[1]]
 
 
+pntsize<-0.5
+pntalpha<-0.5
+txtsize<-2
+txtalpha<-0.5
+txtcolor<-'black'
+erralpha<-0.2
+errcolor<-'black'
+
+mrkgenes<-c('upp','yjjG','WT')
+mrkcolor<-'red'
+mrkalpha<-1
+mrksize<-3
+
+eqsize<-3
 
 #Control
-fitC<-lm(NGM_C ~ MIC,qbacmicq)
-fitNCqr<-rq(NGM_C ~ MIC,data=qbacmicq,tau=c(0.05,0.95))
+fitC<-lm(OD_C_Mean ~ MIC,bacmic)
+fitNCqr<-rq(OD_C_Mean ~ MIC,data=bacmic,tau=c(0.05,0.95))
 mncli<-coefficients(fitNCqr)[1,][[1]]
 mncui<-coefficients(fitNCqr)[1,][[2]]
 mncls<-coefficients(fitNCqr)[2,][[1]]
 mncus<-coefficients(fitNCqr)[2,][[2]]
 
-df_MIC_C<-elipsoid(subset(qbacmicq,!is.na(MIC) & ! is.na(NGM_C)),'MIC','NGM_C')
-df_MIC_Cs<-elipsoid(subset(qbacmicq,!is.na(MIC) & ! is.na(NGM_C)),'MIC','NGM_C',scale=1.2)
+df_MIC_C<-elipsoid(subset(bacmic,!is.na(MIC) & ! is.na(OD_C_Mean)),'MIC','OD_C_Mean')
+df_MIC_Cs<-elipsoid(subset(bacmic,!is.na(MIC) & ! is.na(OD_C_Mean)),'MIC','OD_C_Mean',scale=1.2)
 
-
-mbcC<-ggplot(qbacmicq,aes(x=MIC,y=NGM_C))+
-  geom_path(data=df_MIC_C, aes(x=MIC, y=NGM_C), size=1, linetype=1,color='red',alpha=0.5)+
+#,color=ifelse(Gene %in% mrkgenes,'red',txtcolor)
+mbcC<-ggplot(bacmic,aes(x=MIC,y=OD_C_Mean))+
+  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=erralpha,color=errcolor)+
+  geom_errorbar(aes(ymax=OD_C_Mean+OD_C_SD,ymin=OD_C_Mean-OD_C_SD),width=0.001,alpha=erralpha,color=errcolor)+
+  geom_path(data=df_MIC_C, aes(x=MIC, y=OD_C_Mean), size=1, linetype=1,color='red',alpha=0.5)+
   geom_abline(intercept=fitC$coefficients[[1]],slope=fitC$coefficients[[2]],alpha=0.5,color='red')+
-  geom_point(size=1,alpha=0.7)+
-  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=0.2,color='black')+
-  geom_errorbar(aes(ymax=NGM_C+NGM_sd_C,ymin=NGM_C-NGM_sd_C),width=0.001,alpha=0.2,color='black')+
-  geom_text(aes(label=ifelse(!point.in.polygon(MIC, NGM_C, df_MIC_Cs$MIC, df_MIC_Cs$NGM_C, mode.checked=FALSE),as.character(Gene),'')),
-            hjust=-0.1, vjust=-0.75,size=4)+
+  geom_point(size=pntsize,alpha=pntalpha)+
+  geom_text(aes(label=ifelse(!point.in.polygon(MIC, OD_C_Mean, df_MIC_Cs$MIC, df_MIC_Cs$OD_C_Mean, mode.checked=FALSE) &
+                               !Gene %in% mrkgenes,as.character(Gene),'')),
+            hjust=-0.1, vjust=-0.75,size=txtsize,alpha=txtalpha,color=txtcolor)+
+  geom_text(aes(label=ifelse(Gene %in% mrkgenes,as.character(Gene),'')),
+            hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=mrkcolor)+
   scale_y_continuous(breaks=seq(0,0.35,by=0.05),limits=c(0,0.35))+
-  scale_x_continuous(breaks=seq(0,125,by=25))+
+  scale_x_continuous(breaks=seq(0,125,by=25),limits=c(-12.5,112.5))+
   ggtitle('Bacterial growth in NGM 24hr - Control')+
   xlab(expression(paste('Worm MIC [5FU], ',mu,'M')))+
   ylab('Bacterial growth OD600nm')+
-  annotate('text',x = 87.5, y = 0.33, label = lm_rp(fitC), parse = TRUE,color ='red')
+  annotate('text',x = 60, y = 0.34, label = lm_eqn(fitC)$Full, parse = TRUE,color ='red',size=eqsize)
 mbcC
 dev.copy2pdf(device=cairo_pdf,
              file=paste(odir,"/MIC-NGMControl_bac_growth_SD-elipse.pdf",sep=''),
@@ -273,32 +281,36 @@ dev.copy2pdf(device=cairo_pdf,
 
 
 #Treatment
-fitD<-lm(NGM_D ~ MIC,qbacmicq)
-fitNDqr<-rq(NGM_D ~ MIC,data=qbacmicq,tau=c(0.05,0.95))
+fitD<-lm(OD_T_Mean ~ MIC,bacmic)
+fitNDqr<-rq(OD_T_Mean ~ MIC,data=bacmic,tau=c(0.05,0.95))
 mndli<-coefficients(fitNDqr)[1,][[1]]
 mndui<-coefficients(fitNDqr)[1,][[2]]
 mndls<-coefficients(fitNDqr)[2,][[1]]
 mndus<-coefficients(fitNDqr)[2,][[2]]
 
 
-df_MIC_D<-elipsoid(subset(qbacmicq,!is.na(MIC) & ! is.na(NGM_D)),'MIC','NGM_D')
-df_MIC_Ds<-elipsoid(subset(qbacmicq,!is.na(MIC) & ! is.na(NGM_D)),'MIC','NGM_D',scale=1.2)
+df_MIC_D<-elipsoid(subset(bacmic,!is.na(MIC) & ! is.na(OD_T_Mean)),'MIC','OD_T_Mean')
+df_MIC_Ds<-elipsoid(subset(bacmic,!is.na(MIC) & ! is.na(OD_T_Mean)),'MIC','OD_T_Mean',scale=1.2)
 
 
-mbcD<-ggplot(qbacmicq,aes(x=MIC,y=NGM_D))+
-  geom_path(data=df_MIC_D, aes(x=MIC, y=NGM_D), size=1, linetype=1,color='red',alpha=0.5)+
+mbcD<-ggplot(bacmic,aes(x=MIC,y=OD_T_Mean))+
+  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=erralpha,color=errcolor)+
+  geom_errorbar(aes(ymax=OD_T_Mean+OD_T_SD,ymin=OD_T_Mean-OD_T_SD),width=0.0001,alpha=erralpha,color=errcolor)+
+  geom_path(data=df_MIC_D, aes(x=MIC, y=OD_T_Mean), size=1, linetype=1,color='red',alpha=0.5)+
   geom_abline(intercept=fitD$coefficients[[1]],slope=fitD$coefficients[[2]],alpha=0.5,color='red')+
-  geom_point(size=1,alpha=0.7)+
-  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=0.2,color='black')+
-  geom_errorbar(aes(ymax=NGM_D+NGM_sd_D,ymin=NGM_D-NGM_sd_D),width=0.0001,alpha=0.2,color='black')+
-  geom_text(aes(label=ifelse(!point.in.polygon(MIC, NGM_D, df_MIC_Ds$MIC, df_MIC_Ds$NGM_D, mode.checked=FALSE),as.character(Gene),'')),
-            hjust=-0.1, vjust=-0.75,size=4)+
+  geom_point(size=pntsize,alpha=pntalpha)+
+
+  geom_text(aes(label=ifelse(!point.in.polygon(MIC, OD_T_Mean, df_MIC_Ds$MIC, df_MIC_Ds$OD_T_Mean, mode.checked=FALSE) &
+                               !Gene %in% mrkgenes,as.character(Gene),'')),
+            hjust=-0.1, vjust=-0.75,size=txtsize,alpha=txtalpha,color=txtcolor)+
+  geom_text(aes(label=ifelse(Gene %in% mrkgenes,as.character(Gene),'')),
+            hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=mrkcolor)+
   ggtitle(expression(paste('Bacterial growth in NGM 24hr - 50',mu,'M 5FU')))+
   xlab(expression(paste('Worm MIC [5FU], ',mu,'M')))+
   ylab('Bacterial growth OD600nm')+
-  scale_x_continuous(breaks=seq(0,100,by=25))+
+  scale_x_continuous(breaks=seq(0,100,by=25),limits=c(-12.5,112.5))+
   scale_y_continuous(breaks=seq(0,0.35,by=0.05),limits=c(0,0.35))+
-  annotate('text',x = 87.5, y = 0.33, label = lm_rp(fitD), parse = TRUE,color ='red')
+  annotate('text',x = 60, y = 0.34, label = lm_eqn(fitD)$Full, parse = TRUE,color ='red',size=eqsize)
 mbcD
 dev.copy2pdf(device=cairo_pdf,
              file=paste(odir,"/MIC-NGMTreatment_bac_growth_SD-elipse.pdf",sep=''),
@@ -313,33 +325,34 @@ dev.copy2pdf(device=cairo_pdf,
              width=9,height=6)
 
 
-fitLB <- lm(LB_22hr ~ MIC, data=qbacmicq)
-fitLBqr<-rq(LB_22hr ~ MIC,data=qbacmicq,tau=c(0.05,0.95))
+
+#LB
+fitLB <- lm(LB_22hr ~ MIC, data=bacmic)
+fitLBqr<-rq(LB_22hr ~ MIC,data=bacmic,tau=c(0.05,0.95))
 mlbli<-coefficients(fitLBqr)[1,][[1]]
 mlbui<-coefficients(fitLBqr)[1,][[2]]
 mlbls<-coefficients(fitLBqr)[2,][[1]]
 mlbus<-coefficients(fitLBqr)[2,][[2]]
 
+df_MIC_LB<-elipsoid(subset(bacmic,!is.na(MIC) & ! is.na(LB_22hr)),'MIC','LB_22hr')
+df_MIC_LBs<-elipsoid(subset(bacmic,!is.na(MIC) & ! is.na(LB_22hr)),'MIC','LB_22hr',scale=1.8)
 
-
-
-#LB
-df_MIC_LB<-elipsoid(subset(qbacmicq,!is.na(MIC) & ! is.na(LB_22hr)),'MIC','LB_22hr')
-
-mbcLB<-ggplot(qbacmicq,aes(x=MIC,y=LB_22hr))+geom_point(size=1)+
-  xlim(0,100)+
-  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=0.2,color='black')+
-  geom_text(aes(label=ifelse(!point.in.polygon(MIC, LB_22hr, df_MIC_LB$MIC, df_MIC_LB$LB_22hr, mode.checked=FALSE),Gene,'')),
-            hjust=-0.1, vjust=-0.75,size=4)+
-#   geom_abline(intercept=mlbli,slope=mlbls,alpha=0.5,color='red')+
-#   geom_abline(intercept=mlbui,slope=mlbus,alpha=0.5,color='red')+
-#   annotate("text", 100, mlbls*100+mlbli+0.02, label = "5%",color='red')+
-#   annotate("text", 100, mlbus*100+mlbui+0.02, label = "95%",color='red')+
-  # stat_smooth(aes(group = 1),method = "lm")+
-  ggtitle('Strain growth in LB 22hr OD - Control')+
-  xlab(expression(paste('MIC [5FU], ',mu,'M')))+ylab('OD')+
-  annotate('text',x = 50, y = 1.1, label = lm_eqn(fitLB), parse = TRUE)+
-  geom_path(data=df_MIC_LB, aes(x=MIC, y=LB_22hr), size=1, linetype=1,color='red',alpha=0.2)
+mbcLB<-ggplot(bacmic,aes(x=MIC,y=LB_22hr))+
+  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.00001,alpha=erralpha,color=errcolor)+
+  geom_path(data=df_MIC_LB, aes(x=MIC, y=LB_22hr), size=1, linetype=1,color='red',alpha=0.5)+
+  geom_abline(intercept=fitLB$coefficients[[1]],slope=fitLB$coefficients[[2]],alpha=0.5,color='red')+
+  geom_point(size=pntsize,alpha=pntalpha)+
+  geom_text(aes(label=ifelse(!point.in.polygon(MIC, LB_22hr, df_MIC_LBs$MIC, df_MIC_LBs$LB_22hr, mode.checked=FALSE) &
+                               MIC>5 & !Gene %in% mrkgenes,as.character(Gene),'')),
+            hjust=-0.1, vjust=-0.75,size=txtsize,alpha=txtalpha,color=txtcolor)+
+  geom_text(aes(label=ifelse(Gene %in% mrkgenes,as.character(Gene),'')),
+            hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=mrkcolor)+
+  ggtitle(expression(paste('Bacterial growth in LB 22hr')))+
+  xlab(expression(paste('Worm MIC [5FU], ',mu,'M')))+
+  ylab('Bacterial growth OD600nm')+
+  scale_x_continuous(breaks=seq(0,100,by=25),limits=c(-12.5,112.5))+
+  scale_y_continuous(breaks=seq(0,1,by=0.2),limits=c(0,1))+
+  annotate('text',x = 60, y = 0.95, label = lm_eqn(fitLB)$Full, parse = TRUE,color ='red',size=eqsize)
 mbcLB
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC-LB22hr_bac_growth_SD-elipse.pdf",sep=''),
              width=5,height=5)
@@ -348,24 +361,91 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC-LB22hr_bac_growth_SD-elipse_
 
 
 
-mbcM24<-ggplot(qbacmicq,aes(x=MIC,y=MOPS_24hr))+geom_point(size=1)+
-  stat_smooth(aes(group = 1),method = "lm")+xlim(0,100)+
-  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=0.2,color='black')+
-#   geom_text(aes(label=ifelse(((LB_22hr>MIC*mlbus+mlbui | LB_22hr < MIC*mlbls+mlbli) & MIC >1) | MIC>40,Gene,'')),
-#             hjust=0.05, vjust=-0.75,size=3)+
-#   geom_abline(intercept=mlbli,slope=mlbls,alpha=0.5,color='red')+
-#   geom_abline(intercept=mlbui,slope=mlbus,alpha=0.5,color='red')+
-#   annotate("text", 100, mlbls*100+mlbli+0.02, label = "5%",color='red')+
-#   annotate("text", 100, mlbus*100+mlbui+0.02, label = "95%",color='red')+
-  ggtitle('Strain growth in MOPS 24hr OD - Control')+
-  xlab(expression(paste('MIC [5FU], ',mu,'M')))+ylab('OD')+
+#Statistical analysis
+micname<-expression(paste('Worm MIC [5FU], ',mu,'M',sep=''))
 
-  # annotate('text',x = 50, y = 1.1, label = lm_eqn(fitLB), parse = TRUE)
-mbcM24
+#Volcano plot C/T
+ggplot(bacmic,aes(x=CTODDiff_norm_Mean,y=-log10(CTODDiff_norm_pval)))+
+  geom_errorbarh(aes(xmax=CTODDiff_norm_Mean+CTODDiff_norm_SD,
+                     xmin=CTODDiff_norm_Mean-CTODDiff_norm_SD),height=.001,alpha=0.2)+
+  geom_point(aes(size=MIC,colour=MIC),alpha=0.7)+
+  scale_size(range=c(1,5),breaks = brks,name=micname)+
+  scale_colour_gradientn(colours = c('black','orange','red'),
+                         breaks=brks,limits=c(5,100),guide="legend",name=micname)+
+  guides(color=guide_legend(), size = guide_legend())+
+  geom_text(aes(label=ifelse(CTODDiff_norm_pval<0.01,as.character(Gene),''),color=MIC),
+            hjust=-0.1, vjust=-0.1,size=3)+
+  ggtitle('Treatment - Control bacteria growth OD difference')+
+  xlab('OD difference')+ylab('-log10(p-val)')+
+  ylim(0,5)
+
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Keio_Volcano_Control|Treatment_ODnormDiff.pdf",sep = ''),
+             width=9,height=6)
+
+
+#Volcano plot C/T WT relative
+ggplot(bacmic,aes(x=CTWTDiff_norm_Mean,y=-log10(CTWTDiff_norm_pval)))+
+  geom_errorbarh(aes(xmax=CTWTDiff_norm_Mean+CTWTDiff_norm_SD,
+                     xmin=CTWTDiff_norm_Mean-CTWTDiff_norm_SD),height=.001,alpha=0.2)+
+  geom_point(aes(size=MIC,colour=MIC),alpha=0.7)+
+  scale_size(range=c(1,5),breaks = brks,name=micname)+
+  scale_colour_gradientn(colours = c('black','orange','red'),
+                         breaks=brks,limits=c(5,100),guide="legend",name=micname)+
+  guides(color=guide_legend(), size = guide_legend())+
+  geom_text(aes(label=ifelse(CTWTDiff_norm_pval<0.01,as.character(Gene),''),color=MIC),
+            hjust=-0.1, vjust=-0.1,size=3)+
+  ggtitle('Treatment/Control bacteria growth logFC\n(WT relative)')+
+  xlab('logFC')+ylab('-log10(p-val)')+
+  ylim(0,5)
+
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Keio_Volcano_Control|Treatment_WTnormDiff.pdf",sep = ''),
+             width=9,height=6)
+
+
+#WT relative
+
+repfit<-read.table(paste(ddir,'/Bacterial_growth_replicate_fits.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
+sumfit<-data.frame(WTDiff_a=lmsum(lm(WTDiff_T_Mean ~ WTDiff_C_Mean,data=bacmic))$a,
+                    WTDiff_b=lmsum(lm(WTDiff_T_Mean ~ WTDiff_C_Mean,data=bacmic))$b,
+                    WTDiff_r2=lmsum(lm(WTDiff_T_Mean ~ WTDiff_C_Mean,data=bacmic))$r2,
+                    WTDiff_pval=lmsum(lm(WTDiff_T_Mean ~WTDiff_C_Mean,data=bacmic))$p2)
+
+
+
+
+
+brks<-c(0,5,10,25,50,100)
+
+ggplot(bacmic,aes(x=WTDiff_C_Mean,y=WTDiff_T_Mean))+
+  geom_errorbarh(aes(xmax=WTDiff_C_Mean+WTDiff_C_SD,xmin=WTDiff_C_Mean-WTDiff_C_SD),
+                 height=.001,alpha=0.2)+
+  geom_errorbar(aes(ymax=WTDiff_T_Mean+WTDiff_T_SD,ymin=WTDiff_T_Mean-WTDiff_T_SD),
+                width=0.001,alpha=0.2)+
+  geom_abline(data=sumfit,aes(intercept=WTDiff_b,slope=WTDiff_a),alpha=0.5,color='red')+
+  geom_point(aes(size=MIC,colour=MIC),alpha=0.6)+
+  scale_colour_gradientn(colours = c('black','orange','red','red'),
+                         breaks=brks,limits=c(5,100),guide='legend',name=micname)+
+  scale_size(range=c(1,6),breaks=brks,name=micname)+
+  geom_abline(intercept=0,slope=1,alpha=0.2,aes(color='grey'),linetype='longdash')+
+  
+  geom_text(aes(label=ifelse(CTWTDiff_norm_pval<0.01 &!Gene=='WT',
+                             as.character(Gene),'')),hjust=-0.1, vjust=-0.1,size=3)+
+#  xlim(-2.5,0.5)+ylim(-2.5,0.5)+
+  ggtitle('Treatment/Control comparison of bacterial growth logFC\n(Knockout/WT)')+
+  xlab('Bacteria growth logFC - Control')+ ylab('Bacteria growth logFC - 5-FU Treatment')+
+  guides(color=guide_legend(), size = guide_legend())
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Keio_WT_relative_Scatter.pdf",sep = ''),
+             width=9,height=9)
+
+
+
+
+
+
 
 
 #All MICs
-alldist<-ggplot(qbacmicq,aes(x=MIC,y=reorder(Gene,MIC,max)))+
+alldist<-ggplot(bacmic,aes(x=MIC,y=reorder(Gene,MIC,max)))+
   geom_point(color='red',size=1) + geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd))+
   theme(axis.text.y = element_text(vjust = 0,size=4))+
   scale_x_continuous(breaks=seq(0,100,by=10))+
@@ -376,14 +456,14 @@ alldist
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC_variation_SD_all.pdf",sep=''),width=8,height=150)
 
 #MICs over 1
-scr2dist<-ggplot(subset(qbacmicq,MIC>1),aes(x=MIC,y=reorder(Gene,MIC,max)))+
+scr2dist<-ggplot(subset(bacmic,MIC>1),aes(x=MIC,y=reorder(Gene,MIC,max)))+
   geom_point(color='red',size=0.1) +
   #geom_line(color='red',size=0.1)+
   geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=0.2)+
   scale_x_continuous(breaks=seq(0,100,by=50))+
   ylab('Keio Gene Knockouts (MIC>1)')+
-  xlab(expression(paste('MIC [5FU], ',mu,'M')))+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  xlab(expression(paste('MIC [5FU], ',mu,'M')))
+ # theme(axis.text.x = element_text(angle = 90, hjust = 1))
 scr2dist+theme(axis.text.y=element_blank(),panel.grid.major=element_blank(),axis.ticks.y=element_blank())
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC_variation_SD_MIC-over-1_crop.pdf",sep=''),width=2,height=6)
 
@@ -395,11 +475,11 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC_variation_SD_MIC-over-1.pdf"
 
 
 ######
-q90<-quantile(qbacmicq$MIC,0.9,na.rm=TRUE)[[1]]
-q95<-quantile(qbacmicq$MIC,0.95,na.rm=TRUE)[[1]]
-q99<-quantile(qbacmicq$MIC,0.99,na.rm=TRUE)[[1]]
+q90<-quantile(bacmic$MIC,0.9,na.rm=TRUE)[[1]]
+q95<-quantile(bacmic$MIC,0.95,na.rm=TRUE)[[1]]
+q99<-quantile(bacmic$MIC,0.99,na.rm=TRUE)[[1]]
 
-dist<-ggplot(qbacmicq,aes(x=MIC))+stat_ecdf()+
+dist<-ggplot(bacmic,aes(x=MIC))+stat_ecdf()+
   geom_hline(yintercept=0.90,color='green',alpha=0.5,linetype='longdash')+
   geom_vline(xintercept=q90,color='green',alpha=0.5,linetype='longdash')+
   geom_hline(yintercept=0.95,color='blue',alpha=0.5,linetype='longdash')+
@@ -411,8 +491,8 @@ dist<-ggplot(qbacmicq,aes(x=MIC))+stat_ecdf()+
   annotate("text", 2, 1, label = "99%",color='red')+
   scale_y_continuous(limits=c(0,1), labels = scales::percent,breaks=seq(0,1,by=0.1))+
   scale_x_log10(breaks=c(0,1,10,100))+
-  ylab('')+xlab(expression(paste('MIC [5FU], ',mu,'M')))+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  ylab('')+xlab(expression(paste('MIC [5FU], ',mu,'M')))
+#  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 dist
 dev.copy2pdf(device=cairo_pdf,
              file=paste(odir,"/Cumulative_distribution_of_MIC_log10-x-scale_crop.pdf",sep=''),

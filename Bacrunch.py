@@ -85,9 +85,9 @@ def filename(ifile):
 		itype=ifile.split('.')[1]
 	return ipat, iname, itype
 
-def readxls(ifile):
+def readxls(ifile,tabnum=0):
 	book=xlrd.open_workbook(ifile,formatting_info=False)
-	data=book.sheet_by_name([nm for nm in book.sheet_names() if 'Magellan' in nm][0])
+	data=book.sheet_by_name([nm for nm in book.sheet_names()][tabnum]) # if 'Magellan' in nm
 	sheet=[]
 	for r in range(0,data.nrows):
 		#if len(data.row_values(r))>200:
@@ -144,4 +144,29 @@ writecsv(output,'4th_screen_bacterial_linear_fill.csv',delim=',')
 
 lsy=[['a','1','Cake'],['b','2','Cake'],['a','3','Cake'],['a','1','Cake'],['b','2','Cake']]
 
+
+
+ifile='Biolog worm data summary.xlsx'
+
+os.chdir('/Users/Povilas/Projects/2015-Metformin/Worms/Biolog/Worm_data')
+ipat, iname, itype = filename(ifile)
+sheet=readxls(ifile,tabnum=1)
+
+datacollect=[['Plate','Well','Replicate','Value']]
+for row in sheet:
+	if 'Rep' in row[0]:
+		repl=int(row[0][3:4])
+		continue
+	elif row[0] in ['PM1','PM2A','PM5']:
+		plate=row[0]
+		continue
+	elif all([val!='' for val in row]):
+		for cell,col in IT.izip(row[1:13],range(1,13)):
+			well=row[0]+str(col)
+			newline=[plate,well,repl,cell]
+			datacollect.append(newline)
+			print newline
+
+
+writecsv(datacollect,'Biolog_Worm_linearised_control.csv',delim=',')
 
