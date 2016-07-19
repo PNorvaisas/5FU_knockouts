@@ -361,7 +361,7 @@ ggplot(subset(clean,Name!='2-Hydroxy Benzoic Acid'),aes(x=NGMDiff_C_Mean,y=NGMDi
             hjust=-0.1, vjust=-0.75,size=txtsize,alpha=txtalpha)+
   geom_text(aes(label=ifelse(UniqueName %in% mrknames,as.character(UniqueName),'')),
             hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=mrkcolor)+
-  ylim(-3,2)+xlim(-3,3)+
+  ylim(-3,2)+xlim(-2,3)+
   ggtitle('Treatment/Control comparison of bacterial growth logFC\n(NGM+Metabolite/NGM)')+
   xlab('Bacteria growth logFC - Control')+ ylab('Bacteria growth logFC - 5-FU Treatment')+
   guides(color=guide_legend(), size = guide_legend())

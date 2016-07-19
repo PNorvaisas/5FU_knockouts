@@ -169,7 +169,7 @@ scr3Micsm$MIC<-as.character(scr3Micsm$MIC)
 # scr3[scr3$Gene=='WT cont','Gene']<-'WT'
 # scr3[scr3$Gene=='upp cont','Gene']<-'upp'
 # scr3$MIC<-as.numeric(scr3$MIC)
-# scr3avg<-ddply(scr3, .(Gene,Plate,Well), summarise, MIC_avg=mean(MIC,na.rm = TRUE),MIC_sd=sd(MIC,na.rm = TRUE))
+# scr3avg<-ddply(scr3, .(Gene,Plate,Well), summarise, MIC_avg=mean(MIC,na.rm = TRUE),MIC_SD=sd(MIC,na.rm = TRUE))
 
 
 sc1g<-unique(scr1$Gene)
@@ -231,7 +231,7 @@ unique(micss$MIC)
 scores_avg<-ddply(scores, .(Gene,Plate,Well,Measure), summarise, Score_avg=mean(Score,na.rm = TRUE),Score_sd=sd(Score,na.rm = TRUE))#,Score_N=length(Well)
 
 #Averaging by gene names and positions
-mics_avg<-ddply(micss, .(Gene,Plate,Well), summarise, MIC_avg=mean(MIC,na.rm = TRUE),MIC_sd=sd(MIC,na.rm = TRUE))#,MIC_N=length(Well)
+mics_avg<-ddply(micss, .(Gene,Plate,Well), summarise, MIC_avg=mean(MIC,na.rm = TRUE),MIC_SD=sd(MIC,na.rm = TRUE))#,MIC_N=length(Well)
 
 
 alls<-dcast(scores_avg,Gene+Plate+Well ~Measure,mean,value.var = c('Score_avg'),fill = as.numeric(NA))
@@ -288,10 +288,10 @@ allfull$MIC_avg<-NULL
 
 #Manual fixes
 allfull[allfull$Gene=='WT','MIC']<-1
-allfull[allfull$Gene=='WT','MIC_sd']<-0
+allfull[allfull$Gene=='WT','MIC_SD']<-0
 
 # allfull[allfull$Gene=='upp','MIC']<-15
-# allfull[allfull$Gene=='upp','MIC_sd']<-0
+# allfull[allfull$Gene=='upp','MIC_SD']<-0
 
 
 #Find duplicates
@@ -301,7 +301,7 @@ dupl<-as.factor(unique(allfull[which(duplicated(allfull$Gene)),]$Gene))
 #We have all necessary MIC values!
 allfull$HasNA<-ifelse(is.na(allfull$`0`)|is.na(allfull$`1`)|is.na(allfull$`2.5`)|is.na(allfull$`5`),TRUE,FALSE)
 
-mismic<-subset(allfull,HasNA & is.na(MIC_sd))
+mismic<-subset(allfull,HasNA & is.na(MIC_SD))
 length(subset(mismic,MIC>2.5)$Gene)
 
 
@@ -591,11 +591,11 @@ remsetf<-remsetfff[,!colnames(remsetfff) %in% c('Row','Column','Comment')]
 remsetf<-rename(remsetf,c("NComment"="Comment"))
 
 remset<-remsetf[,c('Gene','Plate','Well','JW_id','ECK','bno',
-                   'MIC','MIC_sd','LB_22hr','MOPS_24hr','MOPS_48hr',
+                   'MIC','MIC_SD','LB_22hr','MOPS_24hr','MOPS_48hr',
                    'OD_C_Mean','OD_C_SD','OD_T_Mean','OD_T_SD','Comment')]
 
 remset[,'MIC']<-NA
-remset[,'MIC_sd']<-NA
+remset[,'MIC_SD']<-NA
 
 dim(remset)
 
@@ -654,11 +654,11 @@ write.xlsx(remset, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), shee
 
 #Duplicates
 duplkeio<-subset(keioinfo,Gene %in% rdupl & !Gene %in% c('WT',NA,'present'))
-duplkeio<-duplset[order(duplkeio$Gene),]
-write.csv(duplset,paste(ddir,'/Gene_duplicates_in_library.csv',sep=''))
+duplset<-duplkeio[order(duplkeio$Gene),]
+write.csv(duplset,paste(ddir,'/Gene_duplicates_in_library.csv',sep=''),row.names = FALSE)
 duplscreen<-subset(bacmic,Gene %in% rdupl & !Gene %in% c('WT',NA,'present'))
 duplscreen<-duplscreen[order(duplscreen$Gene),]
-write.csv(duplscreen,paste(ddir,'/Gene_duplicates_in_screen.csv',sep=''))
+write.csv(duplscreen,paste(ddir,'/Gene_duplicates_in_screen.csv',sep=''),row.names = FALSE)
 #write.csv(duplset,paste(ddir,'/Real_duplicates.csv',sep=''))
 
 

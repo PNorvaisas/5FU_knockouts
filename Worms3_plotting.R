@@ -255,7 +255,7 @@ df_MIC_Cs<-elipsoid(subset(bacmic,!is.na(MIC) & ! is.na(OD_C_Mean)),'MIC','OD_C_
 
 #,color=ifelse(Gene %in% mrkgenes,'red',txtcolor)
 mbcC<-ggplot(bacmic,aes(x=MIC,y=OD_C_Mean))+
-  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=erralpha,color=errcolor)+
+  geom_errorbarh(aes(xmax=MIC+MIC_SD,xmin=MIC-MIC_SD),height=.0001,alpha=erralpha,color=errcolor)+
   geom_errorbar(aes(ymax=OD_C_Mean+OD_C_SD,ymin=OD_C_Mean-OD_C_SD),width=0.001,alpha=erralpha,color=errcolor)+
   geom_path(data=df_MIC_C, aes(x=MIC, y=OD_C_Mean), size=1, linetype=1,color='red',alpha=0.5)+
   geom_abline(intercept=fitC$coefficients[[1]],slope=fitC$coefficients[[2]],alpha=0.5,color='red')+
@@ -294,7 +294,7 @@ df_MIC_Ds<-elipsoid(subset(bacmic,!is.na(MIC) & ! is.na(OD_T_Mean)),'MIC','OD_T_
 
 
 mbcD<-ggplot(bacmic,aes(x=MIC,y=OD_T_Mean))+
-  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=erralpha,color=errcolor)+
+  geom_errorbarh(aes(xmax=MIC+MIC_SD,xmin=MIC-MIC_SD),height=.0001,alpha=erralpha,color=errcolor)+
   geom_errorbar(aes(ymax=OD_T_Mean+OD_T_SD,ymin=OD_T_Mean-OD_T_SD),width=0.0001,alpha=erralpha,color=errcolor)+
   geom_path(data=df_MIC_D, aes(x=MIC, y=OD_T_Mean), size=1, linetype=1,color='red',alpha=0.5)+
   geom_abline(intercept=fitD$coefficients[[1]],slope=fitD$coefficients[[2]],alpha=0.5,color='red')+
@@ -338,7 +338,7 @@ df_MIC_LB<-elipsoid(subset(bacmic,!is.na(MIC) & ! is.na(LB_22hr)),'MIC','LB_22hr
 df_MIC_LBs<-elipsoid(subset(bacmic,!is.na(MIC) & ! is.na(LB_22hr)),'MIC','LB_22hr',scale=1.8)
 
 mbcLB<-ggplot(bacmic,aes(x=MIC,y=LB_22hr))+
-  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.00001,alpha=erralpha,color=errcolor)+
+  geom_errorbarh(aes(xmax=MIC+MIC_SD,xmin=MIC-MIC_SD),height=.00001,alpha=erralpha,color=errcolor)+
   geom_path(data=df_MIC_LB, aes(x=MIC, y=LB_22hr), size=1, linetype=1,color='red',alpha=0.5)+
   geom_abline(intercept=fitLB$coefficients[[1]],slope=fitLB$coefficients[[2]],alpha=0.5,color='red')+
   geom_point(size=pntsize,alpha=pntalpha)+
@@ -361,7 +361,6 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC-LB22hr_bac_growth_SD-elipse_
 
 
 
-#Statistical analysis
 micname<-expression(paste('Worm MIC [5FU], ',mu,'M',sep=''))
 
 #Volcano plot C/T
@@ -404,7 +403,7 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Keio_Volcano_Control|Tr
 
 #WT relative
 
-repfit<-read.table(paste(ddir,'/Bacterial_growth_replicate_fits.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
+repfit<-read.table(paste(ddir,'/Bacterial_growth_linear_fits.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
 sumfit<-data.frame(WTDiff_a=lmsum(lm(WTDiff_T_Mean ~ WTDiff_C_Mean,data=bacmic))$a,
                     WTDiff_b=lmsum(lm(WTDiff_T_Mean ~ WTDiff_C_Mean,data=bacmic))$b,
                     WTDiff_r2=lmsum(lm(WTDiff_T_Mean ~ WTDiff_C_Mean,data=bacmic))$r2,
@@ -415,6 +414,8 @@ sumfit<-data.frame(WTDiff_a=lmsum(lm(WTDiff_T_Mean ~ WTDiff_C_Mean,data=bacmic))
 
 
 brks<-c(0,5,10,25,50,100)
+
+
 
 ggplot(bacmic,aes(x=WTDiff_C_Mean,y=WTDiff_T_Mean))+
   geom_errorbarh(aes(xmax=WTDiff_C_Mean+WTDiff_C_SD,xmin=WTDiff_C_Mean-WTDiff_C_SD),
@@ -428,8 +429,8 @@ ggplot(bacmic,aes(x=WTDiff_C_Mean,y=WTDiff_T_Mean))+
   scale_size(range=c(1,6),breaks=brks,name=micname)+
   geom_abline(intercept=0,slope=1,alpha=0.2,aes(color='grey'),linetype='longdash')+
   
-  geom_text(aes(label=ifelse(CTWTDiff_norm_pval<0.01 &!Gene=='WT',
-                             as.character(Gene),'')),hjust=-0.1, vjust=-0.1,size=3)+
+  geom_text(aes(label=ifelse(Gene %in% c('upp','yjjG'),
+                             as.character(Gene),'')),hjust=-0.1, vjust=-0.1,size=4,color=mrkcolor)+
 #  xlim(-2.5,0.5)+ylim(-2.5,0.5)+
   ggtitle('Treatment/Control comparison of bacterial growth logFC\n(Knockout/WT)')+
   xlab('Bacteria growth logFC - Control')+ ylab('Bacteria growth logFC - 5-FU Treatment')+
@@ -439,14 +440,14 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Keio_WT_relative_Scatte
 
 
 
-
+#CTWTDiff_norm_pval<0.05 & abs(CTWTDiff_norm_Mean)>0.75 & !Gene=='WT'
 
 
 
 
 #All MICs
 alldist<-ggplot(bacmic,aes(x=MIC,y=reorder(Gene,MIC,max)))+
-  geom_point(color='red',size=1) + geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd))+
+  geom_point(color='red',size=1) + geom_errorbarh(aes(xmax=MIC+MIC_SD,xmin=MIC-MIC_SD))+
   theme(axis.text.y = element_text(vjust = 0,size=4))+
   scale_x_continuous(breaks=seq(0,100,by=10))+
   ylab('Gene knockout')+
@@ -456,21 +457,24 @@ alldist
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC_variation_SD_all.pdf",sep=''),width=8,height=150)
 
 #MICs over 1
-scr2dist<-ggplot(subset(bacmic,MIC>1),aes(x=MIC,y=reorder(Gene,MIC,max)))+
+scr2dist<-ggplot(subset(bacmic,MIC>5),aes(x=MIC,y=reorder(Gene,MIC,max)))+
   geom_point(color='red',size=0.1) +
   #geom_line(color='red',size=0.1)+
-  geom_errorbarh(aes(xmax=MIC+MIC_sd,xmin=MIC-MIC_sd),height=.0001,alpha=0.2)+
+  geom_errorbarh(aes(xmax=MIC+MIC_SD,xmin=MIC-MIC_SD),height=.0001,alpha=0.2)+
   scale_x_continuous(breaks=seq(0,100,by=50))+
   ylab('Keio Gene Knockouts (MIC>1)')+
   xlab(expression(paste('MIC [5FU], ',mu,'M')))
  # theme(axis.text.x = element_text(angle = 90, hjust = 1))
-scr2dist+theme(axis.text.y=element_blank(),panel.grid.major=element_blank(),axis.ticks.y=element_blank())
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC_variation_SD_MIC-over-1_crop.pdf",sep=''),width=2,height=6)
+scr2dist+
+  theme(axis.text.y=element_blank(),
+        panel.grid.major=element_blank(),
+        axis.ticks.y=element_blank())
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC_variation_SD_MIC-over-5_crop.pdf",sep=''),width=2,height=6)
 
 scr2dist+theme(axis.text.y = element_text(vjust = 0,size=4))+
   ggtitle('Protective properties of gene knockouts for C. elegans in 5FU exposure')+
   scale_x_continuous(breaks=seq(0,100,by=25))
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC_variation_SD_MIC-over-1.pdf",sep=''),width=8,height=30)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC_variation_SD_MIC-over-5.pdf",sep=''),width=8,height=30)
 
 
 
