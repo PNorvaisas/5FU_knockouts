@@ -9,13 +9,6 @@ library(ellipse)
 library(sp)
 library(xlsx)
 
-drawEuler<-function(set1,set2,set3,labels){
-  draw.triple.venn(length(set1),length(set2),length(set3),
-                   length(intersect(set1,set2)),length(intersect(set2,set3)),length(intersect(set3,set1)),length(intersect(intersect(set3,set1),set2)),
-                   category=labels,
-                   cat.pos=c(0,0,0))
-}
-
 lm_eqn = function(m) {
   fres<-summary(m)
   l <- list(a = format(abs(coef(m)[2]), digits = 2),
@@ -312,9 +305,9 @@ explrd<-subset(bioexpl,Column %in% colnames(allwb))
 explrd<-explrd[match(colnames(allwb),explrd$Column),]
 
 
-write.csv(allwb,paste(ddir,'/Biolog_Combined_Summary_Statistics.csv',sep=''))
-write.xlsx(explrd, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Readme",row.names = FALSE)
-write.xlsx(allwb, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE)
+write.csv(allwb,paste(ddir,'/Biolog_Combined_Summary_Statistics.csv',sep=''),row.names = FALSE)
+write.xlsx(explrd, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
+write.xlsx(allwb, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
 

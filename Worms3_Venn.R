@@ -9,6 +9,17 @@ library('quantreg')
 library('splitstackshape')
 library('VennDiagram')
 library('splitstackshape')
+library(xlsx)
+
+
+drawEuler<-function(set1,set2,set3,labels){
+  draw.triple.venn(length(set1),length(set2),length(set3),
+                   length(intersect(set1,set2)),length(intersect(set2,set3)),length(intersect(set3,set1)),length(intersect(intersect(set3,set1),set2)),
+                   category=labels,
+                   col = c("red",'blue', 'green'),
+                   cat.pos=c(0,0,0))
+}
+
 
 
 odir<-'Figures_final'
@@ -16,59 +27,132 @@ ddir<-'Data_final'
 
 bacmic<-read.table(paste(ddir,'/MICs_and_bacterial_growth-Complete.csv',sep=''),sep=',',header=TRUE)
 unicom<-read.table(paste('Data/MICs_Unknown_function.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
-allwb<-read.table(paste(ddir,'/Biolog_Combined_Summary_Statistics.csv',sep=''),sep=',',header=TRUE)
-
-
 keioinfo<-read.table('../Keio_library/Keio_library_fully_annotated.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-
-
-allk<-subset(keioinfo,!Gene %in% c('Blank','WT'))$Gene
 PLP<-read.table('Data/Genes_using_PLP.csv',sep=',',header=FALSE)
-all<-subset(bacmic,!is.na(Gene))$Gene
-PLPg<-PLP$V1
-MIC1<-subset(bacmic,!is.na(Gene) & MIC>1)$Gene
-MIC25<-subset(bacmic,!is.na(Gene) & MIC>2.5)$Gene
-MIC5<-subset(bacmic,!is.na(Gene) & MIC>5)$Gene
 
 
-PLPl<-list('PLP using'=as.character(PLPg),'Screened Keio library'=all,'MIC>5'=MIC5)
-plot(Venn(PLPl), doWeights = FALSE)#,type='ellipses',type='ellipses',type='ellipses'
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/PLP_using_enzymes_ScreenedKeio.pdf",sep=''),width=9,height=9)
+unknown<-read.table('../EColi_annotation/Unknown/Unknown.tab',sep='\t',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+phantom<-read.table('../EColi_annotation/Unknown/Phantom.tab',sep='\t',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+pseudo<-read.table('../EColi_annotation/Unknown/Pseudo.tab',sep='\t',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+orf<-read.table('../EColi_annotation/Unknown/ORF.tab',sep='\t',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+
+keioinfo<-subset(keioinfo,!is.na(Gene))
+
+bacmic$Index<-paste(bacmic$Gene,bacmic$Plate,bacmic$Well,sep='')
+keioinfo$Index<-paste(keioinfo$Gene,keioinfo$Plate,keioinfo$Well,sep='')
 
 
-PLPl<-list('PLP using'=as.character(PLPg),'Whole Keio library'=allk,'MIC>5'=MIC5)
-plot(Venn(PLPl), doWeights = FALSE)#,type='ellipses',type='ellipses',type='ellipses'
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/PLP_using_enzymes_WholeKeio.pdf",sep=''),width=9,height=9)
+allk<-subset(keioinfo,!Gene %in% c('Blank','WT'))$Index
+
+all<-subset(bacmic,!is.na(Gene))$Index
+PLPg<-subset(bacmic,Gene %in% PLP$V1)$Index
+MIC1<-subset(bacmic,!is.na(Gene) & MIC>1)$Index
+MIC25<-subset(bacmic,!is.na(Gene) & MIC>2.5)$Index
+MIC5<-subset(bacmic,!is.na(Gene) & MIC>5)$Index
+unkn<-subset(keioinfo,Gene %in% unknown$Name)$Index
+psd<-subset(keioinfo,Gene %in% pseudo$Name)$Index
+phntm<-subset(keioinfo,Gene %in% phantom$Name)$Index
+orfl<-subset(keioinfo,Gene %in% orf$Name)$Index
+
+allu<-union(union(unkn,psd),union(phntm,orfl))
+
+
+PLPla<-list('Screened Keio library'=all,'PLP using'=PLPg,'MIC>5'=MIC5)
+plot(Venn(PLPla),show = list(Faces = FALSE),doWeights = FALSE)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Venn_PLP_using_enzymes_ScreenedKeio.pdf",sep=''),width=6,height=6)
 
 
 
-
-PLPc<-PLPl[c('PLP using','Whole Keio library','MIC>5')]
-PLP_df<-plyr::ldply(PLPc, cbind)
-PLP_df<-rename(PLP_df,c('.id'='List','1'='Gene'))
-
-
-plps<-subset(bacmic, Gene %in% unique(PLP_df$Gene))
-plps$'PLP using'<-ifelse(plps$Gene %in% PLPc$'PLP using',TRUE,FALSE)
-plps$'MIC>1'<-ifelse(plps$Gene %in% PLPc$'MIC>1',TRUE,FALSE)
-plps$'MIC>5'<-ifelse(plps$Gene %in% PLPc$'MIC>5',TRUE,FALSE)
-plps<-plps[,c(1,19:21,2:7,9:18,8)]
-write.csv(plps,paste(ddir,'/PLP_use_MIC_overlap.csv',sep=''))
-
+#Draw simple
+dev.off()
+drawEuler(all,
+          intersect(PLPg,all),
+          MIC5,
+          c('Screened Keio library',
+            'PLP using',
+            'MIC>5'))
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/Venn_PLP_using_enzymes_ScreenedKeio_Euler.pdf",sep=''),width=4,height=4)
+dev.off()
 
 
-unw<-list('Whole Keio library'=allk,
-          'Unknown function'=subset(unicom,Unknown.function=='TRUE' & Gene %in% all)$Gene,
+
+PLPlk<-list('PLP using'=PLPg,'Whole Keio library'=allk,'MIC>5'=MIC5)
+plot(Venn(PLPlk),show = list(Faces = FALSE), doWeights = FALSE)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Venn_PLP_using_enzymes_WholeKeio.pdf",sep=''),width=6,height=6)
+
+
+
+#Unknowns
+
+unwk<-list('Whole Keio library'=allk,
+          'Unknown function'=unkn,
           'MIC>5'=MIC5)
-plot(Venn(unw), doWeights = FALSE)
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Unknown_enzymes_3sets_WholeKeio.pdf",sep=''),width=9,height=9)
+plot(Venn(unwk),show = list(Faces = FALSE), doWeights = FALSE)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Venn_Unknown_enzymes_WholeKeio.pdf",sep=''),width=6,height=6)
 
 
-unw<-list('Whole Keio library'=all,
-          'Unknown function'=subset(unicom,Unknown.function=='TRUE' & Gene %in% all)$Gene,
+unw<-list('Screened Keio library'=all,
+          'Unknown function'=intersect(unkn,all),
           'MIC>5'=MIC5)
-plot(Venn(unw), doWeights = FALSE)
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Unknown_enzymes_3sets_ScreenedKeio.pdf",sep=''),width=9,height=9)
+plot(Venn(unw),show = list(Faces = FALSE), doWeights = FALSE)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Venn_Unknown_enzymes_ScreenedKeio.pdf",sep=''),width=6,height=6)
+
+
+
+#Draw simple
+dev.off()
+drawEuler(all,
+          intersect(unkn,all),
+          MIC5,
+          c('Screened Keio library',
+            'Unknown function',
+            'MIC>5'))
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/Venn_Unknown_enzymes_ScreenedKeio_Euler.pdf",sep=''),width=4,height=4)
+dev.off()
+
+
+
+proba<-list('Whole Keio library'=allk,
+           'Problematic'=allu,
+           'MIC>5'=MIC5)
+plot(Venn(proba),show = list(Faces = FALSE), doWeights = FALSE)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Venn_Unknown-pseudo-orf-phantom_WholeKeio.pdf",sep=''),width=6,height=6)
+
+
+#Draw simple
+dev.off()
+drawEuler(allk,
+          allu,
+          MIC5,
+          c('Whole Keio library',
+            'Problematic',
+            'MIC>5'))
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/Venn_Unknown-pseudo-orf-phantom_WholeKeio_Euler.pdf",sep=''),width=4,height=4)
+dev.off()
+
+
+
+prob<-list('Screened Keio library'=all,
+          'Problematic'=intersect(allu,all),
+          'MIC>5'=MIC5)
+plot(Venn(prob),show = list(Faces = FALSE), doWeights = FALSE)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Venn_Unknown-pseudo-orf-phantom_ScreenedKeio.pdf",sep=''),width=6,height=6)
+
+
+#Draw simple
+dev.off()
+drawEuler(all,
+          intersect(allu,all),
+          MIC5,
+          c('Screened Keio library',
+            'Problematic',
+            'MIC>5'))
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/Venn_Unknown-pseudo-orf-phantom_ScreenedKeio_Euler.pdf",sep=''),width=4,height=4)
+dev.off()
 
 
 
@@ -96,91 +180,159 @@ q99<-quantile(bacmic$MIC,0.99,na.rm=TRUE)[[1]]
 
 
 
-bacODsigup<-subset(bacmic,CTODDiff_norm_Mean>0 &CTODDiff_norm_pval<0.05)$Gene
-bacODsigdown<-subset(bacmic,CTODDiff_norm_Mean<0 &CTODDiff_norm_pval<0.05)$Gene
+bacODnormsigup<-subset(bacmic,CTODDiff_norm_Mean>0 &CTODDiff_norm_pval<0.05)$Index
+bacODnormsigdown<-subset(bacmic,CTODDiff_norm_Mean<0 &CTODDiff_norm_pval<0.05)$Index
+
+bacODsigup<-subset(bacmic,CTODDiff_Mean>0 &CTODDiff_pval<0.05)$Index
+bacODsigdown<-subset(bacmic,CTODDiff_Mean<0 &CTODDiff_pval<0.05)$Index
 
 
-bacres95<-subset(bacmic,OD_T_Mean>OD_C_Mean*bgus+bgui)$Gene
-bacsens05<-subset(bacmic,OD_T_Mean<OD_C_Mean*bgls+bgli)$Gene
+bacres95<-subset(bacmic,OD_T_Mean>OD_C_Mean*bgus+bgui)$Index
+bacsens05<-subset(bacmic,OD_T_Mean<OD_C_Mean*bgls+bgli)$Index
 
-bacres90<-subset(bacmic,OD_T_Mean>OD_C_Mean*bgus2+bgui2)$Gene
-bacsens10<-subset(bacmic,OD_T_Mean<OD_C_Mean*bgls2+bgli2)$Gene
+bacres90<-subset(bacmic,OD_T_Mean>OD_C_Mean*bgus2+bgui2)$Index
+bacsens10<-subset(bacmic,OD_T_Mean<OD_C_Mean*bgls2+bgli2)$Index
 
-wormres95<-subset(bacmic,MIC>q95)$Gene
-wormsens05<-subset(bacmic,MIC<q05)$Gene
+wormres95<-subset(bacmic,MIC>q95)$Index
+wormsens05<-subset(bacmic,MIC<q05)$Index
 
-wormres90<-subset(bacmic,MIC>q90)$Gene
-wormres25<-subset(bacmic,MIC>2.5)$Gene
-wormresall<-subset(bacmic,MIC>1)$Gene
-wormresall5<-subset(bacmic,MIC>5)$Gene
-wormsens10<-subset(bacmic,MIC<q10)$Gene
+wormres90<-subset(bacmic,MIC>q90)$Index
+wormres25<-subset(bacmic,MIC>2.5)$Index
+wormresall<-subset(bacmic,MIC>1)$Index
+wormresall5<-subset(bacmic,MIC>5)$Index
+wormsens10<-subset(bacmic,MIC<q10)$Index
 
-resmic5=list('Bacteria sensitive bottom 5%'=bacsens05,
-            'Bacteria resistant top 5%'=bacres95,
-            'Worms resistant top 5%'=wormres95,
-            'Worms sensitive bottom 5%'=wormsens05)
+
+resmic5=list('Bacteria sensitive\nbottom 5%'=bacsens05,
+            'Bacteria resistant\ntop 5%'=bacres95,
+            'Worms resistant\ntop 5%'=wormres95,
+            'Worms sensitive\nbottom 5%'=wormsens05)
 
 
 
 
 resmic10=list('Worms resistant top 10%'=wormres90,
-              'Bacteria sensitive bottom 10%'=bacsens10,
-              'Bacteria resistant top 10%'=bacres90) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
+              'Bacteria sensitive\nbottom 10%'=bacsens10,
+              'Bacteria resistant\ntop 10%'=bacres90) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
 
 
 bacsigmictop10=list('Worms resistant top 10%'=wormres90,
-              'Bacteria significant sensitive (Trend)'=bacODsigdown,
-              'Bacteria significantly resistant (Trend)'=bacODsigup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
+              'Bacteria significantly\nsensitive (Trend)'=bacODnormsigdown,
+              'Bacteria significantly\nresistant (Trend)'=bacODnormsigup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
 
 
 bacsigmico5=list('Worms MIC>5'=wormresall5,
-                    'Bacteria significant sensitive (Trend)'=bacODsigdown,
-                    'Bacteria significantly resistant (Trend)'=bacODsigup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
+                    'Bacteria significantly\nsensitive (Trend)'=bacODnormsigdown,
+                    'Bacteria significantly\nresistant (Trend)'=bacODnormsigup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
 
 
 
 
-plot(Venn(resmic10), doWeights = FALSE)#,type='ellipses'  ,type='ellipses' ,type='ellipses'
+plot(Venn(resmic10),show = list(Faces = FALSE), doWeights = FALSE)
 dev.copy2pdf(device=cairo_pdf,
              file=paste(odir,"/Venn_Wormtop10-Bacteria_ByBacPercentage.pdf",sep=''),
-             width=9,height=9)
+             width=6,height=6)
+
+#Draw simple
+dev.off()
+drawEuler(wormres90,
+          bacsens10,
+          bacres90,
+          c('Worms resistant top 10%',
+            'Bacteria sensitive\nbottom 10%',
+            'Bacteria resistant\ntop 10%'))
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/Venn_Wormtop10-Bacteria_ByBacPercentage_Euler.pdf",sep=''),width=4,height=4)
+dev.off()
 
 
-plot(Venn(bacsigmictop10), doWeights = FALSE)
+plot(Venn(bacsigmictop10),show = list(Faces = FALSE), doWeights = FALSE)
 dev.copy2pdf(device=cairo_pdf,
              file=paste(odir,"/Venn_Wormtop10-Bacteria_BySignificance.pdf",sep=''),
-             width=9,height=9)
+             width=6,height=6)
 
 
-plot(Venn(bacsigmico5), doWeights = FALSE)
+plot(Venn(bacsigmico5),show = list(Faces = FALSE), doWeights = FALSE)
 dev.copy2pdf(device=cairo_pdf,
              file=paste(odir,"/Venn_WormMICo5-Bacteria_BySignificance.pdf",sep=''),
-             width=9,height=9)
+             width=6,height=6)
+
+#Draw simple
+dev.off()
+drawEuler(wormres90,
+          bacODnormsigdown,
+          bacODnormsigup,
+          c('Worms resistant top 10%',
+            'Bacteria significantly\nsensitive (Trend)',
+            'Bacteria significantly\nresistant (Trend)'))
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/Venn_Wormtop10-Bacteria_BySignificance_Euler.pdf",sep=''),width=4,height=4)
+dev.off()
+
+
+
+unknowns<-list('Unknown function'=unkn,
+               'Pseudo gene'=psd,
+               'Phantom gene'=phntm,
+               'ORF'=orfl)
+
+
+res<-list('Worms resistant top 10%'=wormres90,
+          'Bacteria sensitive bottom 10%'=bacsens10,
+          'Bacteria resistant top 10%'=bacres90,
+          'Bacteria sensitive bottom 5%'=bacsens05,
+          'Bacteria resistant top 5%'=bacres95,
+          'Bacteria significantly sensitive'=bacODsigdown,
+          'Bacteria significantly resistant'=bacODsigup,
+          'Bacteria significantly sensitive (Trend)'=bacODnormsigdown,
+          'Bacteria significantly resistant (Trend)'=bacODnormsigup)
+
+
+lists<-c(unknowns,PLPla['PLP using'],res)
+
+inclusion<-function(data,ilist){
+  for (n in names(ilist)){
+    print(n)
+    data[data$Index %in% ilist[n][[1]],as.character(n)]<-'TRUE'
+    data[!data$Index %in% ilist[n][[1]],as.character(n)]<-''
+  }
+  return(data)
+}
+
+bm<-inclusion(bacmic,lists)
+
+bmv<-bm[,colnames(bm) %in% c('Gene','Plate','Well','Index',names(lists))]
+
+
+
+vennexpl<-read.table(paste(ddir,'/Venn_Worm_Bacteria_column_explanation.csv',sep=''),
+                      sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 
 
 
 
+explrm<-subset(vennexpl,Column %in% colnames(bmv))
+explrm<-explrm[match(colnames(bmv),explrm$Column),]
 
-resmic_df<-plyr::ldply(resmic10, cbind)
-resmic_df<-rename(resmic_df,c('.id'='List','1'='Gene'))
+write.csv(bmv,paste(ddir,'/Venn_Worm_Bacteria.csv',sep=''),row.names = FALSE)
 
-#Summary
-rmc<-subset(bacmic, Gene %in% unique(resmic_df$Gene))
-rmc$'Bacteria resistant top 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Bacteria resistant top 5%")$Gene,TRUE,FALSE)
-rmc$'Bacteria sensitive bottom 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Bacteria sensitive bottom 5%")$Gene,TRUE,FALSE)
-rmc$'Worms resistant top 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Worms resistant top 5%")$Gene,TRUE,FALSE)
-rmc$'Worms sensitive bottom 5%'<-ifelse(rmc$Gene %in% subset(resmic_df,List=="Worms sensitive bottome 5%%")$Gene,TRUE,FALSE)
-rmc<-rmc[,c(1,19:21,2:7,9:18,8)]
-write.csv(rmc,paste(ddir,'/Venn_Worm-Bacteria_resistance_overlap.csv',sep=''))
+write.xlsx(explrm, file=paste(ddir,'/Venn_Worm_Bacteria.xlsx',sep=''),
+           sheetName="Readme",row.names = FALSE,showNA=FALSE)
+write.xlsx(bmv, file=paste(ddir,'/Venn_Worm_Bacteria.xlsx',sep=''),
+           sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
+
+
+
 
 
 
 #Biolog
+allwb<-read.table(paste(ddir,'/Biolog_Combined_Summary_Statistics.csv',sep=''),sep=',',header=TRUE)
+
+odir<-'Figures_final/Biolog'
 
 #Venn
 # 
-
-
 
 w1<-subset(allwb,W_Median>1)$UniqueName
 w2<-subset(allwb,W_Median>2)$UniqueName
@@ -203,49 +355,66 @@ sig_CTnormm<-subset(allwb,CTDiff_norm_pval<0.05 & CTDiff_norm_Mean<0)$UniqueName
 
 #Just sets
 sigMet<-list('Treatment: Metabolite/NGM'=sig_T,'Control: Metabolite/NGM'=sig_C,'Treatment/Trend (NGM relative)'=sig_CTnorm,'Treatment/Control (NGM relative)'=sig_CT)
-plot(Venn(sigMet), doWeights = FALSE,type='ellipses')
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Significant-metabolites.pdf",sep=''),width=9,height=9)
+plot(Venn(sigMet),show = list(Faces = FALSE), doWeights = FALSE,type='ellipses')
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Significant-metabolites.pdf",sep=''),width=6,height=6)
 
 #Positive negative Control and treatment
 sigMetpm<-list('Control: Metabolite/NGM -'=sig_Cm,'Control: Metabolite/NGM +'=sig_Cp,'Treatment: Metabolite/NGM -'=sig_Tm,'Treatment: Metabolite/NGM +'=sig_Tp)
-plot(Venn(sigMetpm), doWeights = FALSE,type='ellipses')
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Significant-positive|negative-metabolites.pdf",sep=''),width=9,height=9)
+plot(Venn(sigMetpm),show = list(Faces = FALSE), doWeights = FALSE,type='ellipses')
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Significant-positive|negative-metabolites.pdf",sep=''),width=6,height=6)
 
 
 #Worms>1 CT pos neg
-sigW1CT<-list('Worm growth rescue>1'=w1,'Treatment/Control (NGM relative) +'=sig_CTp,'Treatment/Control (NGM relative) -'=sig_CTm)#
-plot(Venn(sigW1CT),doWeights=FALSE,doEuler=TRUE)#,type='ellipses'
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Worms1-CTboth.pdf",sep=''),width=9,height=9)
+sigW1CT<-list('Worm growth rescue>1'=w1,'Treatment/Control\n(NGM relative) +'=sig_CTp,'Treatment/Control\n(NGM relative) -'=sig_CTm)#
+plot(Venn(sigW1CT),show = list(Faces = FALSE),doWeights=FALSE,doEuler=TRUE)#,type='ellipses'
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Worms1-CTboth.pdf",sep=''),width=6,height=6)
 
 
 #Draw simple
 dev.off()
-drawEuler(sig_CTp,w1,sig_CTm,c('Treatment/Control (NGM relative) +','Worm growth rescue >1','Treatment/Control (NGM relative) -'))
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Worms1-CTboth_simpleEuler.pdf",sep=''),width=9,height=9)
+drawEuler(sig_CTp,
+          w1,
+          sig_CTm,
+          c('Treatment/Control\n(NGM relative) +',
+                               'Worm growth rescue >1',
+                               'Treatment/Control\n(NGM relative) -'))
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Worms1-CTboth_Euler.pdf",sep=''),width=4,height=4)
 dev.off()
 
 
 #Worms>1 CTnorm pos neg
-sigW1CTnorm<-list('Worm growth rescue >1'=w1,'Treatment/Trend (NGM relative) -'=sig_CTnormm,'Treatment/Trend (NGM relative) +'=sig_CTnormp)
-plot(Venn(sigW1CTnorm), doWeights = FALSE)#,type='ellipses'
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Worms1-CTnormboth.pdf",sep=''),width=9,height=9)
+sigW1CTnorm<-list('Worm growth rescue >1'=w1,
+                  'Treatment/Trend\n(NGM relative) -'=sig_CTnormm,
+                  'Treatment/Trend\n(NGM relative) +'=sig_CTnormp)
+plot(Venn(sigW1CTnorm),show = list(Faces = FALSE), doWeights = FALSE)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Worms1-CTnormboth.pdf",sep=''),width=6,height=6)
 
 #Draw simple
 dev.off()
-drawEuler(sig_CTnormp,w1,sig_CTnormm,c('Treatment/Trend (NGM relative) +','Worm growth rescue >1','Treatment/Trend (NGM relative) -'))
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Worms1-CTnormboth_simpleEuler.pdf",sep=''),width=9,height=9)
+drawEuler(sig_CTnormp,w1,sig_CTnormm,c('Treatment/Trend\n(NGM relative) +',
+                                       'Worm growth rescue >1',
+                                       'Treatment/Trend\n(NGM relative) -'))
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Worms1-CTnormboth_Euler.pdf",sep=''),width=4,height=4)
 dev.off()
 
 
 #Worms>2 CTnorm pos neg
-sigW2CTnorm<-list('Worm growth rescue>2'=w2,'Treatment/Trend (NGM relative) -'=sig_CTnormm,'Treatment/Trend (NGM relative) +'=sig_CTnormp)
-plot(Venn(sigW2CTnorm), doWeights = FALSE)#,type='ellipses'
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Worms2-CTnormboth.pdf",sep=''),width=9,height=9)
+sigW2CTnorm<-list('Worm growth rescue>2'=w2,
+                  'Treatment/Trend\n(NGM relative) -'=sig_CTnormm,
+                  'Treatment/Trend\n(NGM relative) +'=sig_CTnormp)
+plot(Venn(sigW2CTnorm),show = list(Faces = FALSE), doWeights = FALSE)#,type='ellipses'
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Worms2-CTnormboth.pdf",sep=''),width=6,height=6)
 
 #Draw simple
 dev.off()
-drawEuler(sig_CTnormp,w2,sig_CTnormm,c('Treatment/Trend (NGM relative) +','Worm growth rescue >2','Treatment/Trend (NGM relative) -'))
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"Bacteria_Venn_Worms2-CTnormboth_simpleEuler.pdf",sep=''),width=9,height=9)
+drawEuler(sig_CTnormp,
+          w2,
+          sig_CTnormm,
+          c('Treatment/Trend\n(NGM relative) +',
+                                       'Worm growth rescue >2',
+                                       'Treatment/Trend\n(NGM relative) -'))
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/Bacteria_Venn_Worms2-CTnormboth_Euler.pdf",sep=''),width=4,height=4)
 dev.off()
 
 
@@ -294,7 +463,27 @@ for (nm in names(lists)){
 allsigdf<-subset(allsigdf,Plate!='NA')
 significance<-dcast(allsigdf,Plate+Well+UniqueName~SigGroup,value.var = c('SigLabel'),fill=as.character(''),fun.aggregate = NULL)
 significancecomp<-merge(allwb[,c('Plate','Well','UniqueName','W_Median')],significance,by=c('Plate','Well','UniqueName'),all.x=TRUE)
-write.csv(significancecomp,paste(ddir,'/Biolog_Significant_hit_comparison.csv',sep=''))
+
+
+
+
+blexpl<-read.table(paste(ddir,'/Venn_Biolog_column_explanation.csv',sep=''),
+                     sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+
+
+
+
+explrm<-subset(blexpl,Column %in% colnames(significancecomp))
+explrm<-explrm[match(colnames(significancecomp),explrm$Column),]
+
+
+write.csv(significancecomp,paste(ddir,'/Biolog_Significant_hit_comparison.csv',sep=''),row.names = FALSE,na = "")
+
+
+write.xlsx(explrm, file=paste(ddir,'/Biolog_Significant_hit_comparison.xlsx',sep=''),
+           sheetName="Readme",row.names = FALSE,showNA=FALSE)
+write.xlsx(significancecomp, file=paste(ddir,'/Biolog_Significant_hit_comparison.xlsx',sep=''),
+           sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
 

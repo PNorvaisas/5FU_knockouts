@@ -243,31 +243,7 @@ gtres<-3
 mttres<-5
 
 
-
-#for (micthres in c(5)){
 micthres<-5
-# circms<-ddply(subset(circm,MIC>micthres),.(Category,Term_ID),summarise,
-#               Size_EC=unique(Size_EC),
-#               Size_KeioS=unique(Size_KeioS),
-#               Term=unique(Term),
-#               Size_MICo5=as.numeric(length(unique(Gene))),
-#               MIC_S_Mean=mean(MIC,na.rm = TRUE),MIC_S_SD=sd(MIC,na.rm = TRUE),
-#               MIC_S_Med=median(MIC,na.rm = TRUE),
-#               MIC_S_Q05=quantile(MIC,probs=c(0.05),na.rm = TRUE),MIC_S_Q95=quantile(MIC,probs=c(0.95),na.rm = TRUE),
-#               MIC_S_Q25=quantile(MIC,probs=c(0.25),na.rm = TRUE),MIC_S_Q75=quantile(MIC,probs=c(0.75),na.rm = TRUE),
-#               OD_T_Mean_S_Mean=mean(OD_T_Mean,na.rm = TRUE),OD_T_Mean_S_SD=sd(OD_T_Mean,na.rm = TRUE),
-#               OD_T_Mean_S_Med=median(OD_T_Mean,na.rm = TRUE),
-#               OD_T_Mean_S_Q05=quantile(OD_T_Mean,probs=c(0.05),na.rm = TRUE),OD_T_Mean_S_Q95=quantile(OD_T_Mean,probs=c(0.95),na.rm = TRUE),
-#               OD_T_Mean_S_Q25=quantile(OD_T_Mean,probs=c(0.25),na.rm = TRUE),OD_T_Mean_S_Q75=quantile(OD_T_Mean,probs=c(0.75),na.rm = TRUE),
-#               OD_C_Mean_S_Mean=mean(OD_C_Mean,na.rm = TRUE),OD_C_Mean_S_SD=sd(OD_C_Mean,na.rm = TRUE),
-#               OD_C_Mean_S_Med=median(OD_C_Mean,na.rm = TRUE),
-#               OD_C_Mean_S_Q05=quantile(OD_C_Mean,probs=c(0.05),na.rm = TRUE),OD_C_Mean_S_Q95=quantile(OD_C_Mean,probs=c(0.95),na.rm = TRUE),
-#               OD_C_Mean_S_Q25=quantile(OD_C_Mean,probs=c(0.25),na.rm = TRUE),OD_C_Mean_S_Q75=quantile(OD_C_Mean,probs=c(0.75),na.rm = TRUE),
-#               LB_sum=mean(LB_22hr,na.rm = TRUE),LB_S_SD=sd(LB_22hr,na.rm = TRUE),
-#               LB_S_Med=median(LB_22hr,na.rm = TRUE),
-#               LB_S_Q05=quantile(LB_22hr,probs=c(0.05),na.rm = TRUE),LB_S_Q95=quantile(LB_22hr,probs=c(0.95),na.rm = TRUE),
-#               LB_S_Q25=quantile(LB_22hr,probs=c(0.25),na.rm = TRUE),LB_S_Q75=quantile(LB_22hr,probs=c(0.75),na.rm = TRUE))
-
 
 circmc<-circm[, -grep("_SD", colnames(circm))]
 circmc<-circmc[, -grep("_pval", colnames(circmc))]
@@ -331,17 +307,10 @@ write.csv(circms_re,
           paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.csv',sep=''),
           row.names = FALSE)
 write.xlsx(explrm, file=paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.xlsx',sep=''),
-           sheetName="Readme",row.names = FALSE)
+           sheetName="Readme",row.names = FALSE,showNA=FALSE)
 write.xlsx(circms_re, file=paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.xlsx',sep=''),
-           sheetName="Data", append=TRUE,row.names = FALSE)
+           sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
-
-
-
-
-
-
-#circms_re<-circms[,c(1:2,5,3:4,6,35:40,7:34)]
 
 
 

@@ -6,6 +6,7 @@ library(tidyr)
 library(quantreg)
 library(ellipse)
 library(sp)
+theme_set(theme_light())
 
 
 #Vennerable installation: install.packages("Vennerable", repos="http://R-Forge.R-project.org")
@@ -149,7 +150,7 @@ bacres<-subset(bacmic,OD_T_Mean>OD_C_Mean*bgus+bgui)
 bacsens<-subset(bacmic,OD_T_Mean<OD_C_Mean*bgls+bgli)
 
 
-theme_set(theme_light())
+
 showgenes<-c('upp','dcuC','yjjG')
 brks<-c(0,5,10,25,50,100)
 micname<-expression(paste('Worm MIC [5FU], ',mu,'M',sep=''))
@@ -456,13 +457,13 @@ alldist<-ggplot(bacmic,aes(x=MIC,y=reorder(Gene,MIC,max)))+
 alldist
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC_variation_SD_all.pdf",sep=''),width=8,height=150)
 
-#MICs over 1
+#MICs over 5
 scr2dist<-ggplot(subset(bacmic,MIC>5),aes(x=MIC,y=reorder(Gene,MIC,max)))+
   geom_point(color='red',size=0.1) +
   #geom_line(color='red',size=0.1)+
   geom_errorbarh(aes(xmax=MIC+MIC_SD,xmin=MIC-MIC_SD),height=.0001,alpha=0.2)+
   scale_x_continuous(breaks=seq(0,100,by=50))+
-  ylab('Keio Gene Knockouts (MIC>1)')+
+  ylab('Keio Gene Knockouts (MIC>5)')+
   xlab(expression(paste('MIC [5FU], ',mu,'M')))
  # theme(axis.text.x = element_text(angle = 90, hjust = 1))
 scr2dist+
