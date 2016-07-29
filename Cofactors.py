@@ -20,6 +20,17 @@ for mod in ['pip','string','math','re','csv','sys','os','commands','datetime','o
 		#pass # module doesn't exist, deal with it.
 
 
+def writecsv(data,ofile,delim='\t'):
+	f=open(ofile,'wb')
+	ofile=csv.writer(f, delimiter=delim) # dialect='excel',delimiter=';', quotechar='"', quoting=csv.QUOTE_ALL
+	for row in data:
+		#row = [item.encode("utf-8") if isinstance(item, unicode) else str(item) for item in row]
+		ofile.writerow(row)
+	f.close()
+
+
+
+
 
 import pythoncyc as pc
 ecoli=pc.select_organism('ECOLI')
@@ -40,14 +51,6 @@ rxns=ecoli['|PYRIDOXAL_PHOSPHATE|'].cofactors_of
 
 genes=[]
 
-def writecsv(data,ofile,delim='\t'):
-	f=open(ofile,'wb')
-	ofile=csv.writer(f, delimiter=delim) # dialect='excel',delimiter=';', quotechar='"', quoting=csv.QUOTE_ALL
-	for row in data:
-		#row = [item.encode("utf-8") if isinstance(item, unicode) else str(item) for item in row]
-		ofile.writerow(row)
-	f.close()
-
 for r in rxns:
 	enzyme=ecoli[r].enzyme
 	if ecoli[enzyme].components:
@@ -62,8 +65,9 @@ for r in rxns:
 					print 'Reaction: {}, Enzyme: {}, Component: {}, Gene: {}'.format(r,enzyme,c,gname)
 					genes.append(gname)
 
+
 cgenes=list(set(genes))
 
 cgenes=[[cg] for cg in cgenes]
 
-writecsv(cgenes,'/Users/Povilas/Projects/2015-Metformin/Worms/Data/Genes_using_PLP.csv',delim=',')
+writecsv(cgenes,'/Users/Povilas/Projects/2015-Metformin/Worms/Data_final/Genes_using_PLP.csv',delim=',')

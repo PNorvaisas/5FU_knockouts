@@ -591,11 +591,9 @@ remsetf<-remsetfff[,!colnames(remsetfff) %in% c('Row','Column','Comment')]
 remsetf<-rename(remsetf,c("NComment"="Comment"))
 
 remset<-remsetf[,c('Gene','Plate','Well','JW_id','ECK','bno',
-                   'MIC','MIC_SD','LB_22hr','MOPS_24hr','MOPS_48hr',
+                   'LB_22hr','MOPS_24hr','MOPS_48hr',
                    'OD_C_Mean','OD_C_SD','OD_T_Mean','OD_T_SD','Comment')]
 
-remset[,'MIC']<-NA
-remset[,'MIC_SD']<-NA
 
 dim(remset)
 
@@ -635,8 +633,8 @@ explrd<-explrd[match(colnames(bacmicw),explrd$Column),]
 
 
 write.csv(bacmicw,paste(ddir,'/MICs_and_bacterial_growth-Complete.csv',sep=''),row.names = FALSE)
-write.xlsx(explrd, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
-write.xlsx(bacmicw, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
+write.xlsx2(explrd, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
+write.xlsx2(bacmicw, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
 
@@ -645,8 +643,8 @@ write.xlsx(bacmicw, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',s
 explrm<-subset(micexpl,Column %in% colnames(remset))
 explrm<-explrm[match(colnames(remset),explrm$Column),]
 write.csv(remset,paste(ddir,'/All_removed_from_screen.csv',sep=''),row.names = FALSE)
-write.xlsx(explrm, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
-write.xlsx(remset, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
+write.xlsx2(explrm, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
+write.xlsx2(remset, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
 

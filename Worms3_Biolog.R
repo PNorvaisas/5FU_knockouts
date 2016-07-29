@@ -219,8 +219,11 @@ insided$PlateGroup<-ifelse(insided$Plate=='PM5','PM5','PM1&PM2A')
 insidedA<-insided
 insidedA$PlateGroup<-'All'
 
+exclude<-c('2-Hydroxy Benzoic Acid','L-Leucine')#,'L-Leucine'
+
 insidedd<-merge(insided,insidedA,all.x=TRUE,all.y=TRUE)
-repfitsjoined<-ddply(insidedd, .(PlateGroup), summarise,
+repfitsjoined<-ddply(subset(insidedd,!UniqueName %in% exclude &
+                              !Name %in% c('Positive Control','Negative Control')), .(PlateGroup), summarise,
                logODInt_a=lmsum(lm(`logODInt_T` ~ `logODInt_C`))$a,
                logODInt_b=lmsum(lm(`logODInt_T` ~ `logODInt_C`))$b,
                logODInt_r2=lmsum(lm(`logODInt_T` ~ `logODInt_C`))$r2,
@@ -266,7 +269,8 @@ insidsumA$PlateGroup<-'All'
 
 insidsumd<-merge(insidsum,insidsumA,all.x=TRUE,all.y=TRUE)
 
-sumfitsjoined<-ddply(insidsumd, .(PlateGroup), summarise,
+sumfitsjoined<-ddply(subset(insidsumd,!UniqueName %in% exclude &
+                              !Name %in% c('Positive Control','Negative Control')), .(PlateGroup), summarise,
                logODInt_a=lmsum(lm(`logODInt_T_Mean` ~ `logODInt_C_Mean`))$a,
                logODInt_b=lmsum(lm(`logODInt_T_Mean` ~ `logODInt_C_Mean`))$b,
                logODInt_r2=lmsum(lm(`logODInt_T_Mean` ~ `logODInt_C_Mean`))$r2,
@@ -306,8 +310,11 @@ explrd<-explrd[match(colnames(allwb),explrd$Column),]
 
 
 write.csv(allwb,paste(ddir,'/Biolog_Combined_Summary_Statistics.csv',sep=''),row.names = FALSE)
-write.xlsx(explrd, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
-write.xlsx(allwb, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
+write.xlsx2(explrd, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
+write.xlsx2(allwb, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE)#showNA=FALSE
+
+write.xlsx2(explrd, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 5/final files/table S5.xlsx', sheetName="Biolog_Readme", append=TRUE,row.names = FALSE,showNA=FALSE)
+write.xlsx2(allwb, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 5/final files/table S5.xlsx', sheetName="Biolog_Data", append=TRUE,row.names = FALSE)#showNA=FALSE
 
 
 
@@ -319,47 +326,71 @@ write.xlsx(allwb, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep
 #Plotting
 
 
-clean<-subset(allwb,Well!='A1' & Name!='Positive Control' )
+clean<-subset(allwb,Well!='A1' & !UniqueName %in% c('Positive Control-PM5','2-Hydroxy Benzoic Acid','L-Leucine') )
 
 pmfit<-subset(allfits,PlateGroup=='All'& Type=='Replicates')
+
+
+gradcolours<-c('black','yellow','orange','red')
+
+
+linfit <- list(a = format(pmfit$NGMDiff_a, digits = 2),
+          b = format(pmfit$NGMDiff_b, digits = 2),
+          r2 =format(pmfit$NGMDiff_r2, digits = 2),
+          p2 =format(pmfit$NGMDiff_p, digits = 2,scientific=TRUE));
+
+eqnexpr <- substitute(italic(y) == b + a %.% italic(x)*","~~italic(r)^2~"="~r2*","~~italic(p)~"="~p2,linfit)
+eqn<-as.character(as.expression(eqnexpr))
 
 lsugs<-as.character(subset(allwb,Description=='carbohydrate' & (grepl('L-', Name) | grepl('Glucoside', Name)))$Name)
 
 
 
 df_NGMT_NGMC<-elipsoid(subset(allwb,!is.na(NGMDiff_C_Mean) & ! is.na(NGMDiff_T_Mean)),
-                       'NGMDiff_C_Mean','NGMDiff_T_Mean',scale=0.5)
-wmedname<-'Worm rescue\nmedian'
+                       'NGMDiff_C_Mean','NGMDiff_T_Mean',scale=0.7)
+
+wmedname<-'C. elegans\nphenotype'
 #mrknames<-c('L-Arabinose')
-mrknames<-c('')
+mrknames<-c('Adenosine','Adenosine-PM5','2-Deoxy Adenosine',
+            'Thymidine','Inosine',
+            '2`-Deoxycytidine-PM5','Cytidine-PM5',
+            'Uridine','Uracil-PM5',
+            'Uridine-PM5','2`-Deoxyuridine-PM5',
+            'L-Arabinose')
 txtalpha<-0.7
 txtsize<-3
 mrksize<-4
 mrkcolor<-'red'
 mrkalpha<-1
+pntalpha<-0.8
+
+
+erralpha<-1
+errcolor<-'grey90'
 
 theme_set(theme_light())
-ggplot(subset(clean,Name!='2-Hydroxy Benzoic Acid'),aes(x=NGMDiff_C_Mean,y=NGMDiff_T_Mean))+
-  geom_errorbarh(aes(xmax=NGMDiff_C_Mean+NGMDiff_C_SD,xmin=NGMDiff_C_Mean-NGMDiff_C_SD),height=.001,alpha=0.1)+
-  geom_errorbar(aes(ymax=NGMDiff_T_Mean+NGMDiff_T_SD,ymin=NGMDiff_T_Mean-NGMDiff_T_SD),width=0.001,alpha=0.1)+
+ggplot(clean,aes(x=NGMDiff_C_Mean,y=NGMDiff_T_Mean))+
   geom_abline(data=pmfit,aes(intercept=NGMDiff_b,slope=NGMDiff_a),alpha=0.5,color='red')+
-  geom_point(aes(size=W_Median,colour=W_Median),alpha=0.5)+
+  geom_errorbarh(aes(xmax=NGMDiff_C_Mean+NGMDiff_C_SD,xmin=NGMDiff_C_Mean-NGMDiff_C_SD),height=0,alpha=erralpha,color=errcolor)+
+  geom_errorbar(aes(ymax=NGMDiff_T_Mean+NGMDiff_T_SD,ymin=NGMDiff_T_Mean-NGMDiff_T_SD),width=0,alpha=erralpha,color=errcolor)+
+  geom_point(aes(size=W_Median,colour=W_Median),alpha=pntalpha)+
   scale_size(range=c(1,5),name=wmedname)+
-  scale_colour_gradientn(colours = c('black','orange','red','red'),
+  scale_colour_gradientn(colours = gradcolours,
                          breaks=c(0,1,2,3,4),limits=c(0,4),guide="legend",name=wmedname)+
   geom_abline(intercept=0,slope=1,alpha=0.2,color='grey',linetype='longdash')+
-  geom_text(aes(label=ifelse(!point.in.polygon(NGMDiff_T_Mean, NGMDiff_C_Mean, df_NGMT_NGMC$NGMDiff_T_Mean, df_NGMT_NGMC$NGMDiff_C_Mean, mode.checked=FALSE) &
-                               !UniqueName %in% mrknames &
-                               (W_Median>3|CTDiff_norm_pval<0.05),as.character(UniqueName),''),colour=W_Median),
-            hjust=-0.1, vjust=-0.75,size=txtsize,alpha=txtalpha)+
-  geom_text(aes(label=ifelse(UniqueName %in% mrknames,as.character(UniqueName),'')),
-            hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=mrkcolor)+
-  ylim(-3,2)+xlim(-2,3)+
+#   geom_text(aes(label=ifelse(!point.in.polygon(NGMDiff_T_Mean, NGMDiff_C_Mean, df_NGMT_NGMC$NGMDiff_T_Mean, df_NGMT_NGMC$NGMDiff_C_Mean, mode.checked=FALSE) &
+#                                !UniqueName %in% mrknames &
+#                                (W_Median>3|CTDiff_norm_pval<0.05),as.character(UniqueName),''),colour=W_Median),
+#             hjust=-0.1, vjust=-0.75,size=txtsize,alpha=txtalpha)+
+#   geom_text(aes(label=ifelse(UniqueName %in% mrknames,as.character(UniqueName),'')),
+#             hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=mrkcolor)+
+  ylim(-2.6,2.1)+xlim(-1.1,1.9)+
   ggtitle('Treatment/Control comparison of bacterial growth logFC\n(NGM+Metabolite/NGM)')+
   xlab('Bacteria growth logFC - Control')+ ylab('Bacteria growth logFC - 5-FU Treatment')+
+  #annotate('text',x = -0.25, y =2.1, label = eqn, parse = TRUE,color ='red',size=4)+
   guides(color=guide_legend(), size = guide_legend())
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Scatter_Control|Treatment_NGMsubs.pdf",sep = ''),
-             width=9,height=6)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Scatter_Control|Treatment_NGMsubs_clean.pdf",sep = ''),
+             width=7,height=4)
 #,colour=W_Median
 #CTDiff_norm_pval<0.01 | W_Median>2 || Name %in% c('Uridine','Adenosine')
 
@@ -371,9 +402,9 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Scatter_Control|Treatme
 #Volcano plot Control
 volC<-ggplot(clean,aes(x=NGMDiff_C_Mean,y=-log10(NGMDiff_C_pval)))+
   geom_errorbarh(aes(xmax=NGMDiff_C_Mean+NGMDiff_C_SD,xmin=NGMDiff_C_Mean-NGMDiff_C_SD),height=.001,alpha=0.2)+
-  geom_point(aes(size=W_Median,colour=W_Median),alpha=0.7)+
+  geom_point(aes(size=W_Median,colour=W_Median),alpha=pntalpha)+
   scale_size(range=c(1,5),name=wmedname)+
-  scale_colour_gradientn(colours = c('black','orange','red','red'),
+  scale_colour_gradientn(colours = gradcolours,
                          breaks=c(0,1,2,3,4),limits=c(0,4),guide="legend",name=wmedname)+
   guides(color=guide_legend(), size = guide_legend())+
   geom_text(aes(label=ifelse(NGMDiff_C_pval<0.01 | W_Median>2,as.character(UniqueName),''),colour=W_Median),hjust=-0.1, vjust=-0.1,size=3)+
@@ -388,9 +419,9 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Volcano_Control.pdf",se
 #Volcano plot Treatment
 volT<-ggplot(clean,aes(x=NGMDiff_T_Mean,y=-log10(NGMDiff_T_pval),color=W_Median))+
   geom_errorbarh(aes(xmax=NGMDiff_T_Mean+NGMDiff_T_SD,xmin=NGMDiff_T_Mean-NGMDiff_T_SD),height=.001,alpha=0.2)+
-  geom_point(aes(size=W_Median,colour=W_Median),alpha=0.7)+
+  geom_point(aes(size=W_Median,colour=W_Median),alpha=pntalpha)+
   scale_size(range=c(1,5),name=wmedname)+
-  scale_colour_gradientn(colours = c('black','orange','red','red'),
+  scale_colour_gradientn(colours = gradcolours,
                          breaks=c(0,1,2,3,4),limits=c(0,4),guide="legend",name=wmedname)+
   guides(color=guide_legend(), size = guide_legend())+
   geom_text(aes(label=ifelse(NGMDiff_T_pval<0.01 | W_Median>2,as.character(UniqueName),''),colour=W_Median),hjust=-0.1, vjust=-0.1,size=3)+
@@ -410,9 +441,9 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Volcano_ControlandTreat
 #Volcano plot C/T
 ggplot(clean,aes(x=CTDiff_Mean,y=-log10(CTDiff_pval)))+
   geom_errorbarh(aes(xmax=CTDiff_Mean+CTDiff_SD,xmin=CTDiff_Mean-CTDiff_SD),height=.001,alpha=0.2)+
-  geom_point(aes(size=W_Median,colour=W_Median),alpha=0.7)+
+  geom_point(aes(size=W_Median,colour=W_Median),alpha=pntalpha)+
   scale_size(range=c(1,5),name=wmedname)+
-  scale_colour_gradientn(colours = c('black','orange','red','red'),
+  scale_colour_gradientn(colours = gradcolours,
                          breaks=c(0,1,2,3,4),limits=c(0,4),guide="legend",name=wmedname)+
   guides(color=guide_legend(), size = guide_legend())+
   geom_text(aes(label=ifelse(CTDiff_pval<0.01| W_Median>2,as.character(UniqueName),''),color=W_Median),hjust=-0.1, vjust=-0.1,size=3)+
@@ -425,18 +456,18 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Volcano_Control|Treatme
 #Volcano plot C/T normalised
 ggplot(clean,aes(x=CTDiff_norm_Mean,y=-log10(CTDiff_norm_pval)))+
   geom_hline(yintercept = -log10(0.05),color='red',linetype='longdash',alpha=0.2)+
-  annotate("text", 4.5,-log10(0.05)+0.05, label = "p=0.05",color='red',size=4,alpha=0.5)+
+  annotate("text", 3,-log10(0.05)+0.05, label = "p=0.05",color='red',size=4,alpha=0.5)+
   geom_errorbarh(aes(xmax=CTDiff_norm_Mean+CTDiff_norm_SD,xmin=CTDiff_norm_Mean-CTDiff_norm_SD),height=.001,alpha=0.2)+
-  geom_point(aes(size=W_Median,colour=W_Median),alpha=0.7)+
+  geom_point(aes(size=W_Median,colour=W_Median),alpha=pntalpha)+
   scale_size(range=c(1,5),name=wmedname)+
-  scale_colour_gradientn(colours = c('black','orange','red','red'),
+  scale_colour_gradientn(colours = gradcolours,
                          breaks=c(0,1,2,3,4),limits=c(0,4),guide="legend",name=wmedname)+
   guides(color=guide_legend(), size = guide_legend())+
   geom_text(aes(label=ifelse((CTDiff_norm_pval<0.01 | W_Median>2) |
                                (CTDiff_norm_pval<0.05 & W_Median>1),
                              as.character(UniqueName),''),color=W_Median),hjust=-0.1, vjust=-0.1,size=3)+
   ggtitle('Treatment/Trend bacteria growth logFC')+
-  xlab('logFC')+ylab('-log10(p-val)')+ xlim(-5,5)
+  xlab('logFC')+ylab('-log10(p-value)')+ xlim(-3.5,3.5)
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Volcano_Control|Treatment_NGMsubsTreatNorm.pdf",sep = ''),
              width=9,height=6)
 
@@ -510,7 +541,7 @@ for (tp in c('CTDiff','CTDiff_norm')) {
               labCol=comp,col=bgg,
               xlab='Replicate',
               dendrogram="row",scale="none",na.color="grey",
-              cexRow=0.6,cexCol=1,
+              cexRow=0.4,cexCol=1,
               margin=c(8,16),
               lwid=c(0.2,0.8),
               reorderfun=reorderfun_mean,symkey=TRUE)
@@ -522,11 +553,12 @@ for (tp in c('CTDiff','CTDiff_norm')) {
 
 
 #Heatmaps worms
-allwbh<-subset(allwb, Well!='A1' & !Name %in% c('Positive Control','Negative Control') &
+allwbh<-subset(allwb, Well!='A1' &
+                 !Name %in% c('Positive Control','Negative Control','2-Hydroxy Benzoic Acid') &
                  (W_Median>1 | CTDiff_norm_pval<0.05))
 
 
-heat<-allwbh[order(allwbh$W_Median,allwbh$W_Mean,decreasing=TRUE),]
+heat<-allwbh[order(allwbh$W_Mean,decreasing=TRUE),]
 heat$Namep<-paste(heat$UniqueName,ifelse(stars.pval(heat$CTDiff_pval)!=' ',paste(' (',stars.pval(heat$CTDiff_pval),')',sep=''),''),sep='')
 Names<-heat$UniqueName
 comp<-c('W1','W2','W3','W4')
@@ -542,7 +574,7 @@ data<-data.matrix(st)
 # dendrogram  = reorder(dendrogram, Rowv)
 # 
 
-bor <- colorRampPalette(c("black", "orange", "red"))(n = 5)
+bor <- colorRampPalette(c("black",'yellow', "orange", "red"))(n = 5)
 
 for (uk in c(TRUE,FALSE)) {
   if (uk){
@@ -555,136 +587,44 @@ for (uk in c(TRUE,FALSE)) {
     he<-12
   }
   #hmap<-
-  heatmap.2(data,key=uk,Colv=FALSE,trace='none',labRow=Names,
+  heatmap.2(data,key=uk,Colv=FALSE,Rowv=FALSE,trace='none',labRow=Names,
             labCol=comp,col=bor,
             xlab='Replicate',
-            dendrogram="row",scale="none",na.color="grey",
+            dendrogram="none",scale="none",na.color="grey",
             cexRow=0.6,cexCol=1,margin=c(8,16),
             lwid=c(0.2,0.8),reorderfun=reorderfun_mean,symkey=FALSE)
-  #hmap
+  #hmap ,reorderfun=reorderfun_mean
   #reorderfun=reorderfun_median
   dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Worms_Heatmap_Score_WMo1_BacSig',usekey,'.pdf',sep = ''),
                width=wd,height=he)
 }
 
-hmap<-heatmap.2(data,key=TRUE,Colv=FALSE,trace='none',labRow=Names,
-                  labCol=comp,col=bor,
-                  xlab='Replicate',
-                  dendrogram="row",scale="none",na.color="grey",
-                  cexRow=0.6,cexCol=1,margin=c(8,16),
-                  lwid=c(0.2,0.8),reorderfun=reorderfun_mean,symkey=FALSE)
+hmap<-heatmap.2(data,key=uk,Colv=FALSE,Rowv=FALSE,trace='none',labRow=Names,
+                labCol=comp,col=bor,
+                xlab='Replicate',
+                dendrogram="none",scale="none",na.color="grey",
+                cexRow=0.6,cexCol=1,margin=c(8,16),
+                lwid=c(0.2,0.8),reorderfun=reorderfun_mean,symkey=FALSE)
 
+#Bacteria heatmap
 
-#Reordering
-
-#Bacteria data
-insided_f_rep<-dcast(insided_f,Plate+Well+Name+Descriptor~Replicate,
-                     fun.aggregate = NULL,value.var = c('CTDiff_norm'),fill = as.numeric(NA))
-ins_f_repc<-subset(insided_f_rep,Descriptor=='Int_750nm_log' & Well!='A1' & !Name %in% c('Positive Control','Negative Control'))
-bacdat<-merge(ins_f_repc,allwb[,c('Plate','Well','Name','UniqueName','W1','W2','W3','W4','CTDiff_pval','CTDiff_norm_pval')],by=c('Plate','Well','Name'))
-bacdta$Namepnorm<-paste(bacdat$UniqueName,ifelse(stars.pval(bacdat$CTDiff_norm_pval)!=' ',paste(' (',stars.pval(bacdat$CTDiff_norm_pval),')',sep=''),''),sep='')
-bacdat$Namep<-paste(bacdat$UniqueName,ifelse(stars.pval(bacdat$CTDiff_pval)!=' ',paste(' (',stars.pval(bacdat$CTDiff_pval),')',sep=''),''),sep='')
-Names<-bacdat$Namepnorm
-comp<-c('1','2','3')
-st<-bacdat[,comp]
-
-
-data        = data.matrix(allwbh[,c('W1','W2','W3','W4')])
-distance    = dist(data)
-cluster     = hclust(distance, method="ward.D2")
-dendrogram  = as.dendrogram(cluster)
-Rowv        = rowMeans(data, na.rm = T)
-RowMedians  = apply(data,1,median)
-
-dendrogram  = reorder(dendrogram, RowMedians)
-
-#Get row indices from dendrogram
-rowInd = rev(order.dendrogram(dendrogram))
-# di = dim(allwbh)
-# nc = di[2L]
-# nr = di[1L]
-# colInd = 1L:nc
-
-allwb_B_ord <- allwbh[order(allwbh$CTDiff_norm_Mean,decreasing=TRUE),]
-
-
-
-#Summary heatmaps
-
-dat<-subset(allwb_B_ord,W_Median>0|CTDiff_norm_pval<0.1)
+dat<-heat
 dat$Namepnorm<-paste(dat$UniqueName,ifelse(stars.pval(dat$CTDiff_norm_pval)!=' ',paste(' (',stars.pval(dat$CTDiff_norm_pval),')',sep=''),''),sep='')
-Names<-dat$UniqueName
-dats<-dat[,c('W_Median','W_Median')]
+dat$pnorm<-stars.pval(dat$CTDiff_norm_pval)
 
-heatmap.2(as.matrix(dats),key=TRUE,Colv=FALSE,Rowv=FALSE,trace='none',labRow=Names,
-          labCol=comp,col=bor,
-          xlab='Replicate',
-          dendrogram="none",scale="none",na.color="grey",
-          cexRow=0.6,cexCol=1,margin=c(8,16),
-          lwid=c(0.2,0.8),symkey=FALSE)
-
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Worms_Heatmap_Score_Bacteria-ordered_significant_o0.pdf',sep = ''),
-             width=4,height=20)
-
-
-
-dat<-subset(allwb_B_ord,W_Median>0|CTDiff_norm_pval<0.1)
-Names<-dat$Namepnorm
-comp<-c('CTDiff_norm_Mean','CTDiff_norm_Mean')
-dats<-dat[,comp]
-
-heatmap.2(as.matrix(dats),key=TRUE,Colv=FALSE,trace='none',labRow=Names,
-          labCol=comp,col=bgg,
-          xlab='Replicate',
-          dendrogram="row",scale="none",na.color="grey",
-          cexRow=0.6,cexCol=1,
-          margin=c(8,16),
-          lwid=c(0.2,0.8),
-          reorderfun=reorderfun_mean,symkey=TRUE)
-
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Bacteria_Heatmap_logFC-mean_Bacteria-ordered_significant_o0.pdf',sep = ''),
-             width=4,height=20)
-
-
-
-#Bacteria Worm ordered
-# data        = data.matrix(allwbh[,c('W1','W2','W3','W4')])
-# distance    = dist(data)
-# cluster     = hclust(distance, method="ward.D")#, method="ward.D"
-# dendrogram  = as.dendrogram(cluster)
-# Rowv        = rowMeans(data, na.rm = T)
-# 
-# 
-# RowMedians  = apply(data,1,median)
-# dendrogram  = hmap$rowDendrogram
-# dendrogram  = reorder(dendrogram, RowMedians)
-
-#Get row indices from dendrogram
-#rowInd = rev(order.dendrogram(dendrogram))
-#rowInd = order.dendrogram(hmap$rowDendrogram)
-#dat<-allwbh[rowInd,]
-dat<-allwbh[order(allwbh$W_Median,allwbh$W_Mean,decreasing=TRUE),]
-#dat<-subset(allwb_W_ord,W_Median>0|CTDiff_norm_pval<0.1)
-#dat<- allwb[order(allwbh$W_Mean,decreasing=TRUE),]
-dat$Namepnorm<-paste(dat$UniqueName,ifelse(stars.pval(dat$CTDiff_norm_pval)!=' ',paste(' (',stars.pval(dat$CTDiff_norm_pval),')',sep=''),''),sep='')
 #Names<-dat$UniqueName
-Names<-dat$Namepnorm
+Names<-dat$pnorm
 comp<-c('CTDiff_norm_Mean','CTDiff_norm_Mean')
 dats<-dat[,comp]
 
 #,Rowv=FALSE
 heatmap.2(as.matrix(dats),key=TRUE,Colv=FALSE,trace='none',labRow=Names,
           labCol=comp,col=bgg,
-          xlab='Replicate',Rowv=hmap$rowDendrogram,
+          xlab='Replicate',Rowv=FALSE,
           dendrogram="none",scale="none",na.color="grey",
-          cexRow=0.6,cexCol=1,margin=c(8,16),
+          cexRow=0.4,cexCol=1,margin=c(8,16),
           lwid=c(0.2,0.8),reorderfun=reorderfun_mean,symkey=TRUE)
 
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Bacteria_Heatmap_logFC-mean_Worm-ordered_WMo1_BacSig.pdf',sep = ''),
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Bacteria_Heatmap_logFC-mean_Worm-ordered_WMo1_BacSig_pval.pdf',sep = ''),
              width=4,height=12)
-
-
-
-
-
 
