@@ -8,6 +8,14 @@ library('gtools')
 library(ellipse)
 library(sp)
 library(xlsx)
+library(car)
+library('rafalib')
+library(multcomp)
+library('contrast')
+
+theme_set(theme_light())
+
+setwd("~/Projects/2015-Metformin/Worms")
 
 lm_eqn = function(m) {
   fres<-summary(m)
@@ -177,20 +185,272 @@ wormall<-rename(wormall,c('1'='W1','2'='W2','3'='W3','4'='W4'))
 write.csv(wormall,paste(ddir,'/Biolog_Worms_Summary.csv',sep=''))
 
 
+ints<-subset(dm,Descriptor %in% c('Int_750nm_log'))#,'Int_750nm','Max_750nm','Max_750nm_log','X24h_750nm','X24h_750nm_log'
+ints$Type<-as.factor(ints$Type)
+
+#Linear modelling
+ints$Name <- relevel(ints$Name, ref = "Negative Control")
+#ints$UniqueName<-ints$Name)
+ints$UniqueName<-as.factor(gsub('`','',ifelse(ints$Plate=='PM5',
+                                  paste(as.character(ints$Name),'-PM5',sep=''),
+                                  as.character(ints$Name))))
+ints$UniqueName<-relevel(ints$UniqueName, ref = "Negative Control")
+ints$PlateGroup<-ifelse(ints$Plate=='PM5','PM5','PM1&PM2A')
+
+
+
+
+#Check Negative control in plates
+
+
+back=subset(ints,Name=='Negative Control')
+
+ggplot(back,aes(y=Value,x=Plate,colour=Type))+
+  geom_boxplot()+geom_point()+
+  ylab('Growth')
+
+fitneg<-lm(Value~Type+Plate+Type:Plate,data=subset(ints,Name=='Negative Control'))
+summary(fitneg)
+
+
+
+
+
+
+# Separate plate groups
+
+
+ints12<-subset(ints,PlateGroup=='PM1&PM2A' )
+ints12$UniqueName <- relevel(ints12$UniqueName, ref = "Negative Control")
+
+
+fitCT12<-lm(Value~Type+Type:UniqueName,data=ints12)
+resCT12<-summary(fitCT12)
+
+#plot(fitCT12)
+
+fit12<-lm(Value~Type*UniqueName,data=ints12)
+result12<-summary(fit12)
+
+ints5<-subset(ints,PlateGroup=='PM5')
+ints5$UniqueName <- relevel(ints5$UniqueName, ref = "Negative Control-PM5")
+
+fitCT5<-lm(Value~Type+Type:UniqueName,data=ints5,qr = TRUE)
+resCT5<-summary(fitCT5)
+
+#plot(fitCT5)
+
+fit5<-lm(Value~Type*UniqueName,data=ints5)
+result5<-summary(fit5)
+
+
+make.CT.frame<-function(res,len){
+  df<-data.frame(res$coefficients)
+  df<-df[(len+1):dim(df)[1],]
+  names<-gsub('UniqueName','',rownames(df))
+  df$ID<-gsub('Type','',names)
+  df = transform(df, ID=colsplit(df$ID, ":", c('Type', 'UniqueName')) )
+  df$UniqueName<-df$ID$UniqueName
+  df$Type<-df$ID$Type
+  df$ID<-NULL
+  rownames(df)<-NULL
+  return(df)
+}
+
+
+resCT5df<-make.CT.frame(resCT5,2)
+resCT5df$PlateGroup<-'PM5'
+resCT12df<-make.CT.frame(resCT12,2)
+resCT12df$PlateGroup<-'PM1&PM2A'
+
+  
+resCT<-merge(resCT5df,resCT12df,all=TRUE)
+
+resCT<-rename(resCT,c('Estimate'='NGMDiff','Std..Error'='SE','Pr...t..'='Pval'))
+resCT$FDR<-p.adjust(resCT$Pval,method = 'fdr')
+resCTm<-melt(resCT,id.vars = c('UniqueName','PlateGroup','Type'),variable.name = 'Stats',value.name = 'Value')
+
+
+resCTf<-dcast(resCTm,UniqueName+PlateGroup~Type+Stats,value.var = 'Value')
+
+fitCTt<-lm(T_NGMDiff~C_NGMDiff,data=resCTf)
+outlierTest(fitCTt)
+otCT<-outlierTest(fitCTt)
+outlistCT<-c(names(otCT$rstudent))
+
+subset(resCTf,rownames(resCTf) %in% outlistCT)
+
+fitCT<-lm(T_NGMDiff~C_NGMDiff,data=subset(resCTf,!rownames(resCTf) %in% outlistCT))
+summary(fitCT)
+plot(fitCT)
+
+
+ggplot(resCTf,aes(x=C_NGMDiff,y=T_NGMDiff))+
+  geom_abline(slope = 1,intercept = 0,color='grey50',alpha=0.5)+
+  geom_abline(slope = fitCT$coefficients[[2]],intercept = fitCT$coefficients[[1]],color='red',alpha=0.5)+
+  geom_errorbar(aes(ymin=T_NGMDiff-T_SE,ymax=T_NGMDiff+T_SE),color='grey70')+
+  geom_errorbarh(aes(xmin=C_NGMDiff-C_SE,xmax=C_NGMDiff+C_SE),color='grey70')+
+  geom_point()
+
+
+make.coef.frame<-function(res,len){
+  tot<-dim(res$coefficients)[1]
+  allcof<-res$coefficients[(len+1):tot]
+  #print(allcof)
+  #print(length(allcof))
+  coflen<-length(allcof)
+  w1<-allcof[1:(coflen/2)]
+  #print(w1)
+  w3<-allcof[(coflen/2+1):coflen]
+  #print(w3)
+  names<-gsub('UniqueName','',rownames(res$coefficients)[(len+1):((coflen/2)+len)])
+  #print(names)
+  cf<-data.frame(UniqueName=names,w1=w1,w3=w3)
+  return(cf)
+}
+
+
+cf12<-make.coef.frame(result12,2)
+cf12$PlateGroup<-'PM1&PM2A'
+cf5<-make.coef.frame(result5,2)
+cf5$PlateGroup<-'PM5'
+
+
+cf<-merge(cf12,cf5,all=TRUE)
+
+genfit12t=lm(w3~w1,data=cf12)
+genres12t=summary(genfit12t)
+
+
+#plot(genfit12t)
+#influencePlot(genfit12t,	id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
+
+ot12<-outlierTest(genfit12t)
+qqPlot(genfit12t, main="QQ Plot")
+
+outlist12<-c(names(ot12$rstudent))
+#Outliers:
+print('Outliers in PM1&PM2A')
+cf12[outlist12,]
+
+
+genfit12=lm(w3~w1,data=subset(cf12,!rownames(cf12) %in% outlist12 & !UniqueName %in% c('2-Hydroxy Benzoic Acid','L-Leucine')))
+genres12=summary(genfit12)
+b12<-genres12$coefficients[[1]]
+a12<-genres12$coefficients[[2]]
+
+
+genfit5t=lm(w3~w1,data=cf5)
+genres5t=summary(genfit5t)
+
+#plot(genfit5t)
+#influencePlot(genfit12t,	id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
+#Bonferroni outlier test
+
+ot5<-outlierTest(genfit5t)
+qqPlot(genfit5t, main="QQ Plot")
+
+outlist5<-c(names(ot5$rstudent))
+#Outliers:
+print('Outliers in PM5')
+cf5[outlist5,]
+
+
+genfit5=lm(w3~w1,data=subset(cf5,!rownames(cf5) %in% outlist5))
+genres5=summary(genfit5)
+b5<-genres5$coefficients[[1]]
+a5<-genres5$coefficients[[2]]
+
+
+fitw13<-lm(w3~w1*PlateGroup,data=cf)
+resw13<-summary(fitw13)
+
+ggplot(cf,aes(x=w1,y=w3,color=PlateGroup))+geom_point()+
+  geom_abline(slope=a12,intercept=b12,color='red')+
+  geom_abline(slope=a5,intercept=b5,color='blue')
+
+
+cf$w3a<-ifelse(cf$PlateGroup=='PM5',cf$w3-(a5*cf$w1+b5),cf$w3-(a12*cf$w1+b12))
+#ggplot(cf,aes(x=w1,y=w3a))+geom_point()
+
+
+genfit125=lm(w3a~w1,data=subset(cf,!rownames(cf) %in% c(outlist12,outlist5,c('2-Hydroxy Benzoic Acid','L-Leucine'))))
+genres125=summary(genfit125)
+b125<-genres125$coefficients[[1]]
+a125<-genres125$coefficients[[2]]
+
+ggplot(cf,aes(x=w1,y=w3a,color=PlateGroup))+geom_point()+
+  geom_abline(slope=a125,intercept=b125,color='maroon')
+
+
+ggplot(cf,aes(x=w3a,fill=PlateGroup))+geom_histogram(position='identity',alpha=0.5)
+
+#AdjustPM1&PM2A
+names12<-subset(cf,PlateGroup=='PM1&PM2A')$UniqueName
+allcontr12<-paste("`TypeT:UniqueName",names12, "`-(", a12,")*`UniqueName",names12,"`=",b12,sep='')#,b12
+adjconf12<-glht(fit12,linfct=allcontr12)
+adjres12<-summary(adjconf12,test = adjusted("none"))
+#adjres122<-summary(adjconf12,test = adjusted("fdr"))
+
+#Adjust PM5
+names5<-subset(cf,PlateGroup=='PM5')$UniqueName
+allcontr5<-paste("`TypeT:UniqueName",names5, "`-(", a5,")*`UniqueName",names5,"`=",b5,sep='')#,b5
+adjconf5<-glht(fit5,linfct=allcontr5)
+adjres5<-summary(adjconf5,test = adjusted("none"))
+#adjres52<-summary(adjconf5,test = adjusted("fdr"))
+
+
+finalres12<-data.frame('CTDiff'=adjres12$test$coefficients,'CT_SE'=adjres12$test$sigma,'CT_Pval'=adjres12$test$pvalues)#,'FDR'=adjres122$test$pvalues
+finalres12$UniqueName<-names12
+finalres12$PlateGroup<-'PM1&PM2A'
+
+
+finalres5<-data.frame('CTDiff'=adjres5$test$coefficients,'CT_SE'=adjres5$test$sigma,'CT_Pval'=adjres5$test$pvalues)#,'FDR'=adjres52$test$pvalues
+finalres5$UniqueName<-names5
+finalres5$PlateGroup<-'PM5'
+
+# finalres12$logFC_CT<-finalres12$logFC_CT#-b12
+# finalres5$logFC_CT<-finalres5$logFC_CT#-b5
+finalres<-merge(finalres12,finalres5,all=TRUE)
+
+rownames(finalres)<-NULL
+finalres$CT_FDR<-p.adjust(finalres$CT_Pval,method = 'fdr')
+
+finalres<-finalres[,c('UniqueName','PlateGroup','CTDiff','CT_SE','CT_Pval','CT_FDR')]
+
+ggplot(finalres,aes(x=CTDiff,y=-log10(CT_Pval),color=PlateGroup))+geom_point()+
+  geom_hline(yintercept = -log10(0.05),color='red',alpha=0.5)+
+  geom_text(aes(label=UniqueName))
+
+#fitp<-lm(-log10(CT_FDR)~-log10(CT_Pval),data<-subset(finalres,CT_Pval<0.05))
+
+#-log10(CT_FDR)
+ggplot(finalres,aes(x=CT_Pval,y=CT_FDR,color=PlateGroup))+geom_point()+
+  geom_hline(yintercept = 0.05,color='red',alpha=0.5)+
+  geom_vline(xintercept = 0.05,color='red',alpha=0.5)
+  #xlim(0,15)+ylim(0,15)
+  #+
+  #geom_text(aes(label=UniqueName))
+
+#Combined stats from linear model
+allstat<-merge(resCTf,finalres[,! colnames(finalres) %in% c("PlateGroup") ],by='UniqueName')
+
+
+
+
 
 
 #Calculate stats
-
-ints<-subset(dm,Descriptor %in% c('Int_750nm_log'))#,'Int_750nm','Max_750nm','Max_750nm_log','X24h_750nm','X24h_750nm_log'
 
 intrefs<-subset(ints,Well=='A1')
 intrefs<-rename(intrefs, c("Value"="A1"))
 intrefs<-intrefs[,union(setdiff(realanot,wellspec),c('Descriptor','A1'))]
 
-in_ref<-merge(ints,intrefs,by=c('File','Plate','Type','Data','Replicate','Descriptor'),
+
+in_ref<-merge(ints,intrefs,by=c('File','Strain','Plate','Type','Data','Replicate','Descriptor'),
               all.x = TRUE,all.y=TRUE)
 in_ref$NGMDiff<-in_ref$Value-in_ref$A1
-in_ref$UniqueName<-as.factor(paste(as.character(in_ref$Name),'-PM5',sep=''))
+
 
 
 in_ref<-rename(in_ref,c('Value'='logODInt'))
@@ -198,7 +458,7 @@ in_ref<-rename(in_ref,c('Value'='logODInt'))
 inrefm<-melt(in_ref[,!colnames(in_ref) %in% c('A1')],measure.vars = c('logODInt','NGMDiff'),
              variable.name='Measure',value.name='Value')
 
-insided<-dcast(inrefm,Plate+Well+Replicate+ReplicateB+Name+UniqueName+EcoCycID+Group+Description~Measure+Type,
+insided<-dcast(inrefm,PlateGroup+Plate+Well+Replicate+ReplicateB+Name+UniqueName+EcoCycID+Group+Description~Measure+Type,
                 fun.aggregate = NULL,value.var = c('Value'),fill = as.numeric(NA))
 
 
@@ -210,11 +470,11 @@ PM2Names<-unique(subset(insided,Plate %in% c('PM2A'))$Name)
 
 dubl<-setdiff(intersect(PM5Names,PM12Names),c('Negative Control','Positive Control'))
 
-
-insided$UniqueName<-ifelse(insided$Plate=='PM5',
-                           paste(as.character(insided$Name),'-PM5',sep=''),
-                           as.character(insided$Name))
-insided$PlateGroup<-ifelse(insided$Plate=='PM5','PM5','PM1&PM2A')
+# 
+# insided$UniqueName<-ifelse(insided$Plate=='PM5',
+#                            paste(as.character(insided$Name),'-PM5',sep=''),
+#                            as.character(insided$Name))
+# insided$PlateGroup<-ifelse(insided$Plate=='PM5','PM5','PM1&PM2A')
 
 insidedA<-insided
 insidedA$PlateGroup<-'All'
@@ -286,6 +546,9 @@ allfits<-merge(repfitsjoined,sumfitsjoined,all.x=TRUE,all.y=TRUE)
 insidsumc<-insidsum[, -grep("logODInt_._pval", colnames(insidsum))]
 
 
+#Finish stats
+
+
 allrep<-merge(wormall[,c('Plate','Well','W1','W2','W3','W4','W_Mean','W_SD','W_Median')],
               subset(byrepsided,Descriptor=='Int_750nm_log')[,c('Plate','Well',
                                                                 'C_B1','C_B2','C_B3','C_B4',
@@ -315,10 +578,6 @@ write.xlsx2(allwb, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',se
 
 write.xlsx2(explrd, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 5/final files/table S5.xlsx', sheetName="Biolog_Readme", append=TRUE,row.names = FALSE,showNA=FALSE)
 write.xlsx2(allwb, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 5/final files/table S5.xlsx', sheetName="Biolog_Data", append=TRUE,row.names = FALSE)#showNA=FALSE
-
-
-
-
 
 
 

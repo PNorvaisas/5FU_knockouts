@@ -8,6 +8,13 @@ library('splitstackshape')
 library(gtable)
 library(gridExtra)
 library(xlsx)
+library('gtools')
+
+
+theme_set(theme_light())
+
+theme_update(panel.background = element_rect(colour = "black"),
+             axis.text = element_text(colour = "black"))
 
 setwd("~/Projects/2015-Metformin/Worms")
 
@@ -187,6 +194,7 @@ allannot[allannot$Term=='NANA','Term']<-NA
 write.csv(allannot,paste(ddir,'/Enrichement_all_terms.csv',sep=''),row.names = FALSE)
 
 
+
 circmr<-merge(bacmic,allannot, by.x='Gene',by.y='Gene',all.x = TRUE)
 circmr$Term<-as.factor(circmr$Term)
 circmr$Category<-as.factor(circmr$Category)
@@ -199,7 +207,6 @@ circm<-merge(circmr,circsumfull,by=c('Category','Term_ID'),all.x=TRUE)
 unique(allannot$Category)
 
 
-theme_set(theme_light())
 
 Slevel=c(0)
 SAbr=c('all')
@@ -234,15 +241,14 @@ Medias<-data.frame(media=Media,mtitle=MTitle,mabr=MAbr,morder=MOrder,mscale=MSca
 
 
 #Enrichment for genes with MIC>smth
-#micthres<-5
 #MIC thres in figures
 mtres<-1
 #Number of genes thres
 gtres<-3
 #MIC med thres
-mttres<-5
+mttres<-0
 
-
+#Enricchment threshold should be set to 5
 micthres<-5
 
 circmc<-circm[, -grep("_SD", colnames(circm))]
@@ -265,6 +271,10 @@ circmstatm<-melt(circmstat,measure.vars = c('S_Mean','S_SD','S_Med','S_Q05','S_Q
 
 circms<-dcast(circmstatm,Category+Term_ID+Term+Size_EC+Size_KeioS+Size_MICo5~ Measure+Stat,value.var = 'Value')
 
+#How many tested minus WT
+tot<-length(bacmic$Gene)-1
+hits<-length(subset(bacmic,MIC>5)$Gene)
+  
 
 
 circms$Coverage_EC<-circms$Size_MICo5/circms$Size_EC
@@ -273,26 +283,26 @@ circms$Score_EC<-circms$Coverage_EC*circms$MIC_S_Mean
 circms$Score_KeioS<-circms$Coverage_KeioS*circms$MIC_S_Mean
 circms$Score_EC_Med<-circms$Coverage_EC*circms$MIC_S_Med
 circms$Score_KeioS_Med<-circms$Coverage_KeioS*circms$MIC_S_Med
+circms$Enrichmentp<-phyper(circms$Size_MICo5-1,hits,tot-hits,circms$Size_KeioS,lower.tail = FALSE)
 
 
 
 
-
-
+#Raw data not saved
 enr<-merge(circm,circms[,! colnames(circms) %in% c('Size_EC','Size_KeioS')],by=c('Category','Term_ID','Term'),all.x=TRUE)
 enr[enr=='NaN']<-NA
 dim(enr)
 
 
 
-circms_re<-subset(circms,!is.na(Category))
+circms_re<-subset(circms,!is.na(Category) & Size_KeioS>3)
 circms_re<-circms_re[, -grep("logOD", colnames(circms_re))]
 circms_re<-circms_re[, -grep("WTDiff", colnames(circms_re))]
 #circms_re<-circms_re[, -grep("CTWTDiff", colnames(circms_re))]
 circms_re<-circms_re[, -grep("CTODDiff", colnames(circms_re))]
 
 circms_re<-circms_re[,c(1:6,
-                        match(c('Coverage_EC'),colnames(circms_re)):match(c('Score_KeioS_Med'),colnames(circms_re)),
+                        match(c('Coverage_EC'),colnames(circms_re)):match(c('Enrichmentp'),colnames(circms_re)),
                         7: (match(c('Coverage_EC'),colnames(circms_re))-1) )]
 
 annotexpl<-read.table(paste(ddir,'/Enrichment_distribution_column_explanation.csv',sep=''),
@@ -306,9 +316,9 @@ explrm<-explrm[match(colnames(circms_re),explrm$Column),]
 write.csv(circms_re,
           paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.csv',sep=''),
           row.names = FALSE)
-write.xlsx(explrm, file=paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.xlsx',sep=''),
+write.xlsx2(explrm, file=paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.xlsx',sep=''),
            sheetName="Readme",row.names = FALSE,showNA=FALSE)
-write.xlsx(circms_re, file=paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.xlsx',sep=''),
+write.xlsx2(circms_re, file=paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.xlsx',sep=''),
            sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
@@ -321,8 +331,8 @@ write.xlsx(circms_re, file=paste(ddir,'/Enrichment_Distributions_for_terms_MICo'
 envar<-paste('Enrichment_MICo',micthres,sep='')
 dir.create(paste(odir,'/',envar,sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
 
-micname<-expression(paste('Worm MIC\n median [5FU], ',mu,'M',sep=''))
-mic<-expression(paste('Worm MIC [5FU], ',mu,'M',sep=''))
+micname<-expression(paste('C. elegans MIC\n median [5FU], ',mu,'M',sep=''))
+mic<-expression(paste('C. elegans MIC [5FU], ',mu,'M',sep=''))
 
 ##MIC distributions and coverage
 print('MIC distributions and coverage')
@@ -364,7 +374,7 @@ for(s in 1:nrow(Stat)) {
                          aes(y=selcov[,as.character(mr$cols)],x=reorder(selcov$Term,selcov[,as.character(mr$cols)])))+
         geom_bar(stat = "identity",fill='red',alpha=0.8)+
         coord_flip()+
-        labs(fill='Number of genes')+
+        labs(fill='Number of hits')+
         scale_fill_gradient( high="red",low='gray')+
         ylab(mr$axis)+
         xlab(tr$ttitle)+ggtitle(gtitle2)+theme(axis.text.y=element_blank(),
@@ -421,7 +431,7 @@ for(m in 1:nrow(Thresholds)) {
                          fill=Size_MICo5))+
         geom_bar(stat = "identity")+
         coord_flip()+
-        labs(fill='Number of genes')+
+        labs(fill='Number of hits')+
         scale_fill_gradient( high="red",low='grey')+
         ylab(mr$axis)+#ylim(0,mr$mscale)+
         xlab(tr$ttitle)+ggtitle(gtitle)
@@ -437,7 +447,7 @@ for(m in 1:nrow(Thresholds)) {
   }
 }
 
-
+#mtres<-0
 ##MIC distributions
 print('MIC distributions')
 dir.create(paste(odir,'/',envar,'/MIC',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
@@ -445,8 +455,8 @@ for(s in 1:nrow(Stat)) {
   sr <- Stat[s,]
   for(t in 1:nrow(Types)) {
     tr <- Types[t,]
-    sel<-subset(enr,Category==as.character(tr$tname) & MIC>mtres & Size_MICo5>gtres&
-                  MIC_S_Mean>mttres &!is.na(Term) &
+    # & Size_MICo5>gtres&MIC_S_Mean>mttres
+    sel<-subset(enr,Category==as.character(tr$tname) & MIC>mtres &!is.na(Term)& Size_MICo5>gtres &
                   ! Term %in% c('Metabolic pathways',
                                 'Biosynthesis of secondary metabolites',
                                 'Microbial metabolism in diverse environments'))
@@ -455,17 +465,25 @@ for(s in 1:nrow(Stat)) {
     fname<-paste(odir,'/',envar,'/MIC/',tr$tabr,'_MIC_',sr$sabr,'_MICo',micthres,'.pdf',sep = '')
     print(gtitle)
     print(fname)
+    sel$Term<-gsub('metabolism','met.',sel$Term)
+    sel$Term<-gsub('biosynthesis','bs.',sel$Term)
     termMIC<-ggplot(sel,
-                    aes(y=MIC,x=reorder(Term,MIC_S_Med),fill=Size_MICo5,color=MIC_S_Mean))+
-      geom_boxplot(position='identity')+coord_flip()+
-      scale_colour_gradientn(colours = c('black','orange','red'),
-                             breaks=c(5,25,50),limits=c(5,50),guide='legend',name=micname)+
-      labs(fill='Number of genes',color='MIC average')+
-      scale_fill_gradient( high="red",low='white')+
+                    aes(y=MIC,x=reorder(Term,Coverage_KeioS),fill=Coverage_KeioS,color=Size_KeioS))+
+      geom_boxplot(position='identity')+
+      geom_point()+
+      coord_flip()+
+      scale_colour_gradientn(colours = c('black','yellow','red'),
+                             breaks=c(5,10,15,20),limits=c(2,20),guide='legend')+#breaks=c(5,10,15,20),limits=c(2,20)
+      labs(fill='Coverage',
+           color='Number of genes with MIC>5')+
+      scale_fill_gradientn(colours=c('grey70',"blue",'cyan'),limits=c(0,1),breaks=c(0,0.2,0.4,0.6,0.8,1)) +
       #scale_color_gradient(limits=c(0,100), high="blue",low='gray')+
-      ylab(mic)+ylim(0,100)+
-      xlab(tr$ttitle)+ggtitle(gtitle)
-    cairo_pdf(fname,width=9,height=9)
+      ylab(mic)+#ylim(1,100)+
+      scale_y_continuous(breaks=c(1,2.5,5,10,25,50,100),trans='log',limits=c(1,100))+
+      #annotation_logticks(base = 10,color='grey50')+#,sides=''
+      xlab(tr$ttitle)+ggtitle(gtitle)+
+      theme(legend.box='horizontal',legend.position='top')
+    cairo_pdf(fname,width=10,height=8)
     print(termMIC)
     dev.off()
     #      
@@ -473,6 +491,83 @@ for(s in 1:nrow(Stat)) {
 }
 
 
+mtres<-5
+##MIC significance
+print('MIC distributions')
+dir.create(paste(odir,'/',envar,'/MICsignificance',sep=''), showWarnings = TRUE, recursive = FALSE, mode = "0777")
+for(s in 1:nrow(Stat)) {
+  sr <- Stat[s,]
+  for(t in 1:nrow(Types)) {
+    tr <- Types[t,]
+    # & Size_MICo5>gtres&MIC_S_Mean>mttres & Enrichmentp<0.1
+    sel<-subset(enr,Category==as.character(tr$tname) & MIC>mtres &!is.na(Term)& Size_MICo5>gtres  &
+                  ! Term %in% c('Metabolic pathways',
+                                'Biosynthesis of secondary metabolites',
+                                'Microbial metabolism in diverse environments'))
+    selneg<-subset(enr,Category==as.character(tr$tname) & MIC<=mtres &!is.na(Term)& Size_MICo5>gtres  &
+                  ! Term %in% c('Metabolic pathways',
+                                'Biosynthesis of secondary metabolites',
+                                'Microbial metabolism in diverse environments'))
+    #& logp_sum>2 & logp_sum>2  & logp_sum>2  & logp_sum>2
+    gtitle<-paste('Enriched E. Coli MG1655 ',tr$ttitle,' - MIC significance distribution, ',sr$sabr,' MIC>',micthres,sep = '')
+    fname<-paste(odir,'/',envar,'/MICsignificance/',tr$tabr,'_MIC_',sr$sabr,'_MICo',micthres,'.pdf',sep = '')
+    fname2<-paste(odir,'/',envar,'/MICsignificance/',tr$tabr,'_MIC_',sr$sabr,'_MICo',micthres,'_large.pdf',sep = '')
+    print(gtitle)
+    print(fname)
+    sel$Term<-gsub('metabolism','met.',sel$Term)
+    sel$Term<-gsub('biosynthesis','bs.',sel$Term)
+    termMIC<-ggplot(sel,
+                    aes(y=MIC,x=reorder(Term,Coverage_KeioS),fill=Coverage_KeioS,color=Size_MICo5))+
+      geom_boxplot(position='identity')+
+      #geom_point()+
+      coord_flip()+
+      geom_hline(yintercept=5,color='red',alpha=0.5)+
+      scale_colour_gradientn(colours = c('black','yellow','red'),breaks=c(5,10,20,30),limits=c(2,31),guide='legend')+#breaks=c(5,10,15,20),limits=c(2,20)
+      labs(fill='Coverage',
+           color='Number of genes with MIC>5')+
+      scale_fill_gradientn(colours=c('grey70',"blue",'cyan'),limits=c(0,1),breaks=c(0,0.2,0.4,0.6,0.8,1))+
+      geom_text(aes(y=5,label=as.character(stars.pval(Enrichmentp))),
+                color='black',hjust=0, vjust=0,size=3)+#-Size_MICo5
+#       geom_text(aes(y=7.5,label=as.character(Size_MICo5)),
+#                 color='black',hjust=0, vjust=0,size=3)+
+      ylab(mic)+
+      scale_y_continuous(breaks=c(5,10,25,50,100),limits=c(5,100),trans='log')+#,trans='log'
+      #annotation_logticks(base = 10,color='grey50')+#,sides=''
+      xlab(tr$ttitle)+ggtitle(gtitle)+
+      theme(legend.box='horizontal',legend.position='top')
+#     termMIC2<-ggplot(selneg,
+#                     aes(y=MIC,x=reorder(Term,-Enrichmentp),color=Size_KeioS-Size_MICo5))+
+#       #geom_boxplot(position='identity')+
+#       #geom_point()+
+#       coord_flip()+
+#       scale_colour_gradientn(colours = c('black','yellow','red'),breaks=c(5,10,15,20,30),limits=c(4,31),guide='legend')+#breaks=c(5,10,15,20),limits=c(2,20)
+#       labs(fill='-log10(p)',
+#            color='Number of genes with MIC>5')+
+#       #scale_fill_gradientn(colours=c('grey70',"blue",'cyan'),limits=c(0,5),breaks=c(0,1,2,3,4,5)) +#,limits=c(0,1),breaks=c(0,0.2,0.4,0.6,0.8,1)
+#       #scale_color_gradient(limits=c(0,100), high="blue",low='gray')+
+#       ylab(mic)+#ylim(1,100)+
+#       
+#       scale_y_continuous(breaks=c(1,2.5,5,10,25,50,100),limits=c(1,100),trans='log')+#,trans='log'
+#       #annotation_logticks(base = 10,color='grey50')+#,sides=''
+#       xlab(tr$ttitle)+ggtitle(gtitle)+
+#       theme(legend.box='horizontal',legend.position='top')
+    #cairo_pdf(fname,width=10,height=8)
+    #print(termMIC)
+    #dev.off()
+
+    cairo_pdf(fname,width=6,height=8)
+    print(termMIC)
+    #grid.arrange(termMIC, termMIC2, ncol=2,widths=c(2,2))
+    dev.off()
+    cairo_pdf(fname2,width=12,height=8)
+    print(termMIC)
+    #grid.arrange(termMIC, termMIC2, ncol=2,widths=c(2,2))
+    dev.off()
+    #      
+  }
+}
+
+mtres<-0
 
 
 
