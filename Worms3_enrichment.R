@@ -22,64 +22,6 @@ capFirst <- function(s) {
   paste(toupper(substring(s, 1, 1)), substring(s, 2), sep = "")
 }
 
-GOsplit<-function(x,rtrn="GO"){
-  if (grepl('~',x)) {
-    sep='~'
-  } else if (grepl(':',x)) {
-    sep=':'
-  } else {
-    if (rtrn=="GO"){
-      return(NA)
-    } else if (rtrn=="Term"){
-      return(x)
-    }
-  }
-  splt<-strsplit(x,split=sep)[[1]]
-  res<-list()
-  if (length(splt)==2){
-    res$GO<-as.character(splt[1])
-    res$Term<-as.character(splt[2])
-  } else {
-    res$GO<-NA
-    res$Term<-as.character(splt[1])
-  }
-  if (rtrn=="GO"){
-    return(res$GO)
-  } else if (rtrn=="Term"){
-    return(res$Term)
-  }
-  
-}
-
-read.GO<-function(flnm,filter=TRUE,pval='Benjamini'){
-  GO<-read.table(flnm,sep='\t',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-  as.data.frame(GO)
-  #rownames(GO)<-str(rownames(GO))
-  GO$ID<-as.character(lapply(GO$Term,GOsplit,rtrn="GO"))
-  GO$Term<-as.character(lapply(GO$Term,GOsplit,rtrn="Term"))
-  if (pval=='Benjamini'){
-    GO$adj_pval<-GO$Benjamini
-  } else if (pval=='Bonferoni'){
-    GO$adj_pval<-GO$Bonferoni
-  } else if (pval=='FDR'){
-    GO$adj_pval<-GO$FDR
-  } else if (pval=='PValue'){
-    GO$adj_pval<-GO$PValue
-  } else {
-    GO$adj_pval<-GO$PValue
-  }
-  
-  GO[GO$Category=="KEGG_PATHWAY",]$Category<-"KP"
-  GO[GO$Category=="GOTERM_BP_FAT",]$Category<-"BP"
-  GO[GO$Category=="GOTERM_CC_FAT",]$Category<-"CC"
-  GO[GO$Category=="GOTERM_MF_FAT",]$Category<-"MF"
-  if (filter){
-    GO<-subset(GO,Category %in% c("BP","MF","CC"))
-  }
-  
-  return(GO)
-}
-
 multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
   library(grid)
   
@@ -119,26 +61,6 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
 
 
 
-read.Annot<-function(flnm,filter=TRUE){
-  dar<-read.table(flnm,sep='\t',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-  dar<-dar[,c('ID',"Gene.Name","Species","OFFICIAL_GENE_SYMBOL","GOTERM_BP_FAT","GOTERM_CC_FAT","GOTERM_MF_FAT","KEGG_PATHWAY")]
-  dar<-dar[,c('ID',"Gene.Name","Species","GOTERM_BP_FAT","GOTERM_CC_FAT","GOTERM_MF_FAT","KEGG_PATHWAY")]
-  darm<-melt(dar,id=c('ID',"Gene.Name","Species"),variable.name = 'Category',value.name='Term')
-  darmm<-cSplit(darm, "Term", sep = ",", direction = "long")
-  darmm<-data.frame(darmm)
-  darmm$Term<-as.character(darmm$Term)
-  darmm$Category<-as.character(darmm$Category)
-  darmm$Term_ID<-as.character(lapply(darmm$Term,GOsplit,rtrn="GO"))
-  darmm$Term<-as.character(lapply(darmm$Term,GOsplit,rtrn="Term"))
-  darmm[darmm$Category=="KEGG_PATHWAY",]$Category<-"KP"
-  darmm[darmm$Category=="GOTERM_BP_FAT",]$Category<-"BP"
-  darmm[darmm$Category=="GOTERM_CC_FAT",]$Category<-"CC"
-  darmm[darmm$Category=="GOTERM_MF_FAT",]$Category<-"MF"
-  darmm$Strain<-ifelse(darmm$Category=='KP',substr(darmm$Term_ID,1,3),'eco')
-  return(darmm)
-}
-
-
 
 
 odir<-'Figures_final'
@@ -148,61 +70,26 @@ bacmic<-read.table(paste(ddir,'/MICs_and_bacterial_growth-Complete.csv',sep=''),
 bacmic<-bacmic[,!colnames(bacmic) %in% c('X','JW_id','ECK','X0','X1','X2.5','X5','bno','EG','GI','MOPS_24hr','MOPS_48hr')]
 
 
-ecor<-read.table('../EColi_annotation/EcoCyc_Patwhays.tsv',sep='\t',header=TRUE,stringsAsFactors = FALSE)
-ecom<- cSplit(ecor, "Genes", sep = ";", direction = "long")
-ecocyc<-rename(ecom,c('Genes'='Gene','Pathway'='Term'))
-ecocyc<-as.data.frame(ecocyc)
-ecocyc$Link<-as.character(ecocyc$Link)
-ecocyc$Term_ID<-separate(data = ecocyc, col = Link, into = c("Base", "Mid",'Term_ID'), sep = "\\=")$Term_ID
-ecocyc$Category<-'EcoCyc'
-ecocyc$Link<-NULL
 
-#Get KEGG pathway annotations
-keggr<-read.table('../EColi_annotation/Gene_KeggEco.csv',sep=',',
-                  header=TRUE,stringsAsFactors = TRUE,colClasses=c(rep("factor",6)))
-keggc<-subset(keggr,! is.na(KeggPathID))
-patc<-data.frame(table(keggc$KeggPathID))
-keggp<-merge(keggc,patc, by.x='KeggPathID',by.y='Var1',all.x=TRUE)
-keggp$X<-NULL
-keggp$Category<-'KEGG'
-keggm<-rename(keggp,c('PathDescription'='Term','Freq'='Size','KeggPathID'='Term_ID'))
-
-#Get GO annotaations
-goECr<-read.table('../EColi_annotation/Gene_GO.csv',sep=',',
-                  header=TRUE,stringsAsFactors = TRUE)#,colClasses=c(rep("factor",6))
-goEC<-subset(goECr,!is.na(GO_ID))
-goEC$X<-NULL
-goc<-data.frame(table(goEC$GO_ID))
-goECm<-merge(goEC,goc,by.x='GO_ID',by.y='Var1',all.x=TRUE)
-goECm$Category<-paste('GO',as.character(goECm$Ontology),sep='_')
-goECm<-rename(goECm,c('GO_ID'='Term_ID','Freq'='Size'))
-
-
-#Gene set sizes need to be estimated for whole E coli, screened Keio and MIC>5
-
-allannot<-merge(keggm[,c('Term','Size','Gene','Term_ID','Category')],ecocyc,all.x=TRUE,all.y=TRUE)
-allannot<-merge(goECm[,c('Term','Size','Gene','Term_ID','Category')],allannot,all.x=TRUE,all.y=TRUE)
-allannot$ID<-NULL
-allannot<-rename(allannot,c('Size'='Size_EC'))
-allannot<-allannot[,c('Gene','Category','Term_ID','Term','Size_EC')]
-
-
-allannot$Term<-capFirst(allannot$Term)
-allannot[allannot$Term=='NANA','Term']<-NA
-
-#Final Allannot
-write.csv(allannot,paste(ddir,'/Enrichement_all_terms.csv',sep=''),row.names = FALSE)
-
-
+#Read Annotations
+allannot<-read.table(paste(ddir,'/Enrichement_all_terms.csv',sep=''),sep=',',header=TRUE)
 
 circmr<-merge(bacmic,allannot, by.x='Gene',by.y='Gene',all.x = TRUE)
 circmr$Term<-as.factor(circmr$Term)
 circmr$Category<-as.factor(circmr$Category)
 
 #Get gene counts for screened Keio library
-circsumfull<-ddply(circmr,.(Category,Term_ID),summarise, Size_KeioS=as.numeric(length(unique(Gene))) )
+circsummic<-ddply(circmr,.(Category,Term_ID),summarise, Size_KeioS=as.numeric(length(unique(Gene))) )
 
-circm<-merge(circmr,circsumfull,by=c('Category','Term_ID'),all.x=TRUE)
+#No need to separately count Size Bac S, it's same to Size_MICo5
+circsumbac<-ddply(subset(circmr,!is.na(N)),.(Category,Term_ID),summarise, Size_BacS=as.numeric(length(unique(Gene))) )
+
+#circsumfull<-merge(circsummic,circsumbac,by=c('Category','Term_ID'),all.x=TRUE,all.y=TRUE)
+
+
+circm<-merge(circmr,circsummic,by=c('Category','Term_ID'),all.x=TRUE)
+
+
 
 unique(allannot$Category)
 
@@ -224,18 +111,18 @@ TTitle=c('KEGG pathway','EcoCyc pathway','GO Biological process')
 TAbr=c('KEGG-PWY','EcoCyc-PWY','GO_BP')
 Types<-data.frame(tname=TName,tabr=TAbr,ttitle=TTitle)
 
-Thrnames<-c('Coverage in E. coli','Coverage in valid Keio','Score in whole E. coli','Score in screened Keio','Score in whole E. coli (median)','Score in screened Keio (median)')
-Thrcols<-c('Coverage_EC','Coverage_KeioS','Score_EC','Score_KeioS','Score_EC_Med','Score_KeioS_Med')
-Thraxis<-c('Coverage','Coverage','Score','Score','Score','Score')
-Thrabr<-c('CovEC','CovKS','Score_EC','Score_KS','Score_ECmed','Score_KSmed')
+Thrnames<-c('Coverage in E. coli','Coverage in valid Keio')
+Thrcols<-c('Coverage_EC','Coverage_KeioS')
+Thraxis<-c('Coverage','Coverage')
+Thrabr<-c('CovEC','CovKS')
 Thresholds<-data.frame(names=Thrnames,cols=Thrcols,axis=Thraxis,abr=Thrabr)
 
 
-Media=c('LB_22hr','OD_T_Mean','OD_C_Mean')
+Media=c('LB_22hr','T_OD_Mean','C_OD_Mean')
 MTitle=c('LB 22hr growth','NGM + 100uM 5FU growth','NGM growth')
 MAbr=c('LB','NGM-5FU','NGM')
-MOrder=c('LB_S_Med','OD_T_Mean_S_Med','OD_C_Mean_S_Med')
-MQvars=c('LB','OD_T_Mean','OD_C_Mean')
+MOrder=c('LB_S_Med','T_OD_Mean_S_Med','C_OD_Mean_S_Med')
+MQvars=c('LB','T_OD_Mean','C_OD_Mean')
 MScale=c(1,0.3,0.3)
 Medias<-data.frame(media=Media,mtitle=MTitle,mabr=MAbr,morder=MOrder,mscale=MScale,mqvars=MQvars)
 
@@ -251,8 +138,13 @@ mttres<-0
 #Enricchment threshold should be set to 5
 micthres<-5
 
+
+#Clean for MIC enrichment
 circmc<-circm[, -grep("_SD", colnames(circm))]
-circmc<-circmc[, -grep("_pval", colnames(circmc))]
+circmc<-circmc[, -grep("_p.value", colnames(circmc))]
+circmc<-circmc[, -grep("_t.value", colnames(circmc))]
+circmc<-circmc[, -grep("_SE", colnames(circmc))]
+circmc<-circmc[, -grep("_FDR", colnames(circmc))]
 circmc<-circmc[,!colnames(circmc) %in% c('N')]
 
 circmelt<-melt(subset(circmc,MIC>micthres),id=c('Category','Term_ID','Term','Gene','Plate','Well','Size_EC','Size_KeioS'),
@@ -269,23 +161,69 @@ circmstat<-ddply(circmelt,.(Category,Term_ID,Term,Size_EC,Size_KeioS,Measure),su
 circmstatm<-melt(circmstat,measure.vars = c('S_Mean','S_SD','S_Med','S_Q05','S_Q25','S_Q75','S_Q95'),
               variable.name = 'Stat',value.name='Value')
 
-circms<-dcast(circmstatm,Category+Term_ID+Term+Size_EC+Size_KeioS+Size_MICo5~ Measure+Stat,value.var = 'Value')
+circmst<-dcast(circmstatm,Category+Term_ID+Term+Size_EC+Size_KeioS+Size_MICo5~ Measure+Stat,value.var = 'Value')
+
+
+#
+# circAllm<-melt(subset(circm,MIC>micthres & GT_p.value<0.05),id=c('Category','Term_ID','Term','Gene','Plate','Well','Size_EC','Size_KeioS'),
+#                variable.name = 'Measure',value.name='Value')
+
+circmBAll<-subset(circm,MIC>micthres & GT_p.value<0.05)
+circmBAll$Interaction<-'BacInteracting'
+circmBSyn<-subset(circm,MIC>micthres & GT_Interaction < 0 & GT_p.value<0.05)
+circmBSyn$Interaction<-'BacSynergistic'
+circmBAnt<-subset(circm,MIC>micthres & GT_Interaction >0 & GT_p.value<0.05)
+circmBAnt$Interaction<-'BacAntagonistic'
+
+circmBSA<-merge(circmBSyn,circmBAnt,all=TRUE)
+circmB<-merge(circmBSA,circmBAll,all=TRUE)
+
+circmBStat<-ddply(circmB,.(Category,Term_ID,Interaction),summarise,
+                    Size=as.numeric(length(unique(Gene))))
+
+
+circmBStatM<-melt(circmBStat,measure.vars = c('Size'),
+                 variable.name = 'Stat',value.name='Value')
+circmBs<-dcast(circmBStatM,Category+Term_ID ~ Stat+Interaction,value.var = 'Value')
+
+circms<-merge(circmst,circmBs,by=c('Category','Term_ID'),all.x=TRUE)
 
 #How many tested minus WT
-tot<-length(bacmic$Gene)-1
-hits<-length(subset(bacmic,MIC>5)$Gene)
-  
+
+bacmicnoWT<-subset(bacmic,Gene!='WT')
+tot<-length(bacmicnoWT$Gene)
+hits<-length(subset(bacmicnoWT,MIC>5)$Gene)
+
+bacInt<-length(subset(bacmicnoWT,MIC>5 & GT_p.value<0.05)$Gene)
+bacSyn<-length(subset(bacmicnoWT,MIC>5 & GT_Interaction < 0 & GT_p.value<0.05)$Gene)
+bacAnt<-length(subset(bacmicnoWT,MIC>5 & GT_Interaction > 0 & GT_p.value<0.05)$Gene)
 
 
 circms$Coverage_EC<-circms$Size_MICo5/circms$Size_EC
 circms$Coverage_KeioS<-circms$Size_MICo5/circms$Size_KeioS
-circms$Score_EC<-circms$Coverage_EC*circms$MIC_S_Mean
-circms$Score_KeioS<-circms$Coverage_KeioS*circms$MIC_S_Mean
-circms$Score_EC_Med<-circms$Coverage_EC*circms$MIC_S_Med
-circms$Score_KeioS_Med<-circms$Coverage_KeioS*circms$MIC_S_Med
-circms$Enrichmentp<-phyper(circms$Size_MICo5-1,hits,tot-hits,circms$Size_KeioS,lower.tail = FALSE)
+
+circms$Coverage_BacInteracting<-circms$Size_BacInteracting/circms$Size_MICo5
+circms$Coverage_BacSynergistic<-circms$Size_BacSynergistic/circms$Size_MICo5
+circms$Coverage_BacAntagonistic<-circms$Size_BacAntagonistic/circms$Size_MICo5
 
 
+circms$Enrichment_MIC_p.value<-phyper(circms$Size_MICo5-1,hits,tot-hits,circms$Size_KeioS,lower.tail = FALSE)
+circms$Enrichment_BacInt_p.value<-phyper(circms$Size_BacInteracting-1,bacInt,hits-bacInt,circms$Size_MICo5,lower.tail = FALSE)
+circms$Enrichment_BacSyn_p.value<-phyper(circms$Size_BacSynergistic-1,bacSyn,hits-bacSyn,circms$Size_MICo5,lower.tail = FALSE)
+circms$Enrichment_BacAnt_p.value<-phyper(circms$Size_BacAntagonistic-1,bacAnt,hits-bacAnt,circms$Size_MICo5,lower.tail = FALSE)
+
+subset(circms,Enrichment_BacInt_p.value<0.05)[,c('Size_EC','Size_KeioS','Size_MICo5','Size_BacInteracting','Enrichment_BacInt_p.value','Category','Term_ID','Term')]
+subset(circms,Enrichment_BacSyn_p.value<0.05)[,c('Size_EC','Size_KeioS','Size_MICo5','Size_BacSynergistic','Enrichment_BacSyn_p.value','Category','Term_ID','Term')]
+subset(circms,Enrichment_BacAnt_p.value<0.05)[,c('Size_EC','Size_KeioS','Size_MICo5','Size_BacAntagonistic','Enrichment_BacAnt_p.value','Category','Term_ID','Term')]
+
+
+#PLP test
+phyper(9,hits,tot-hits,43,lower.tail = FALSE)
+
+
+subset(enr,Enrichment_BacInt_p.value<0.05)
+subset(circms,Enrichment_BacSyn_p.value<0.05)
+subset(circms,Enrichment_BacAnt_p.value<0.05)
 
 
 #Raw data not saved
@@ -294,6 +232,7 @@ enr[enr=='NaN']<-NA
 dim(enr)
 
 
+#Redo for saving
 
 circms_re<-subset(circms,!is.na(Category) & Size_KeioS>3)
 circms_re<-circms_re[, -grep("logOD", colnames(circms_re))]

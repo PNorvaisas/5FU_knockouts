@@ -90,7 +90,7 @@ for (or in 1:nrow(orgsel)) {
     df$Type<-coltype
     df$Organism<-organism
     
-    if (dim(all)[1]==0) {
+    if (dim(alldif)[1]==0) {
       alldif<-df
     } else {
       alldif<-merge(alldif,df,all=TRUE)
@@ -352,7 +352,7 @@ for (eni in 1:nrow(enrichments)) {
 #     "E.coli_Arabinose+5FU/5FU_logp",
 #     "E.coli_Arabinose+5FU/Arabinose_logp"
   }
-  
+  enbrks<-c(0,-log(0.05,10),2,3,4,5)
   
   hdata<-statsall[!apply(statsall[,cnm], 1, function(x)(all(x< -log(0.05,10),na.rm=TRUE))),]
   rnm<-hdata$`Metabolite Set`
@@ -382,23 +382,13 @@ for (eni in 1:nrow(enrichments)) {
             cexRow=0.7,cexCol=0.7,margin=c(16,16),
             lwid=c(0.2,0.8),symkey=FALSE,
             reorderfun=reorderfun_mean,
-            breaks=c(0,-log(0.05,10),2,3,4,5))
+            breaks=enbrks)
   #dev.off()
   dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Metabolomics_',entype,'_heatmap.pdf',sep = ''),
                width=8,height=17)
   
   
 }
-
-
-
-#Data for comparison
-
-diffs<-alldat$Diff
-diffm<-melt(diffs,id.vars = c('ID','Name','Type','Organism'),variable.name = 'Stats',value.name = 'Value')
-
-dif<-dcast(diffm,ID+Name~Organism+Type+Stats,value.var = 'Value')
-dif[,3:37]<-apply(dif[,3:37],2,as.numeric)
 
 
 #Raw data
@@ -654,9 +644,10 @@ result<-summary(model)
 lresultscelb<-ldply(result, function(x) getinfo(x$coefficients))
 lresultscelb$Type<-'C.elegans'
 
-#Get bonus results together
+#Get additional results together
+comptbt<-merge(lresultsecob,lresultscelb,all = TRUE)
 
-comptb<-merge(lresultsecob,lresultscelb,all = TRUE)
+comptb<-subset(comptbt,Comparisons=='as.factor(`5-FU`:`L-Arabinose`)1uM:10mM')
 
 #Get main results together
 compt<-merge(lresultseco,lresultscel,all = TRUE)
@@ -680,39 +671,46 @@ compchange<-c("`5-FU`1uM"="5FU vs Control",
               "OrganismC.elegans"="C.elegans vs E.coli")
 allcompfull$Comparisons<-revalue(allcompfull$Comparisons,compchange)
 
+allcompfull$FDR<-p.adjust(allcompfull$p.value,method = 'fdr')
 
 
 
 
-
-#Melt everything
-# allcompm<-melt(allcompclean,id.vars = c('Metabolite','Type','Comparisons'),
+#Data for comparison
+# 
+# diffs<-alldat$Diff
+# diffm<-melt(diffs,id.vars = c('ID','Name','Type','Organism'),variable.name = 'Stats',value.name = 'Value')
+# 
+# dif<-dcast(diffm,ID+Name~Organism+Type+Stats,value.var = 'Value')
+# dif[,3:37]<-apply(dif[,3:37],2,as.numeric)
+# 
+# 
+# 
+# allcompm<-melt(allcompfull,id.vars = c('Metabolite','Type','Comparisons'),
 #                variable.name = 'Stat',value.name = 'Value')
 # 
-# fullstatt<-dcast(allcompm,.id~Type+Comparisons+Stat,value.var = 'Value',drop=TRUE,fill=as.numeric(NA))
+# fullstatt<-dcast(allcompm,Metabolite~Type+Comparisons+Stat,value.var = 'Value',drop=TRUE,fill=as.numeric(NA))
+# 
 # fullstat<-merge(fullstatt,dif,by.x=c('Metabolite'),by.y=c('Name'))
-
-#fullstat<-merge(fullstata,bstatt,by='Metabolite')
-
 # 
 # #C.elegans 5-FU
-# ggplot(fullstat,aes(x=fullstat$'C.elegans_5FU/Control_Difference',
-#                     y=fullstat$'C.elegans_`5-FU`1uM_Estimate'))+
+# ggplot(fullstat,aes(x=fullstat$`C.elegans_5FU/Control_Difference`,
+#                     y=fullstat$`C.elegans_5FU vs Control_Difference`))+
 #   geom_point()
 # #C. elegans L-Arabinose
 # ggplot(fullstat,aes(x=fullstat$`C.elegans_Arabinose/Control_Difference`,
-#                     y=fullstat$"C.elegans_`L-Arabinose`10mM_Estimate"))+
+#                     y=fullstat$`C.elegans_L-Arabinose vs Control_Difference`))+
 #   geom_point()
 # 
 # #E. coli 5-FU
-# ggplot(fullstat,aes(x=fullstat$'E.coli_5FU/Control_Difference',
-#                     y=fullstat$'E.coli_`5-FU`1uM_Estimate'))+
+# ggplot(fullstat,aes(x=fullstat$`E.coli_5FU/Control_Difference`,
+#                     y=fullstat$`E.coli_5FU vs Control_Difference`))+
 #   geom_point()
 # #E.coli L-Arabinose
 # ggplot(fullstat,aes(x=fullstat$`E.coli_Arabinose/Control_Difference`,
-#                     y=fullstat$"E.coli_`L-Arabinose`10mM_Estimate"))+
+#                     y=fullstat$`E.coli_L-Arabinose vs Control_Difference`))+
 #   geom_point()
-# 
+
 
 selcol<-c("C.elegans_5FU vs Control",
           "C.elegans_L-Arabinose vs Control",
@@ -725,7 +723,10 @@ selcol<-c("C.elegans_5FU vs Control",
 
 cleannames<-gsub('_',' ',selcol)
 
-allcompclean<-subset(allcompfull,Type!='Interorganism' & Comparisons!='(Intercept)')
+allcompclean<-subset(allcompfull,Type!='Interorganism' & 
+                       Comparisons %in% c("5FU vs Control",
+                                          "L-Arabinose vs Control",
+                                          "5FU & L-Arabinose vs Control"))
 
 allcompclean$FDR<-p.adjust(allcompclean$p.value,method = 'fdr')
 
