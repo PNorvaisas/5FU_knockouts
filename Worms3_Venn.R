@@ -160,20 +160,6 @@ dev.off()
 
 
 
-
-fitqr<-rq(OD_T_Mean ~ OD_C_Mean,data=bacmic,tau=c(0.05,0.95))
-bgli<-coefficients(fitqr)[1,][[1]]
-bgui<-coefficients(fitqr)[1,][[2]]
-bgls<-coefficients(fitqr)[2,][[1]]
-bgus<-coefficients(fitqr)[2,][[2]]
-
-fitqr2<-rq(OD_T_Mean ~ OD_C_Mean,data=bacmic,tau=c(0.10,0.90))
-bgli2<-coefficients(fitqr2)[1,][[1]]
-bgui2<-coefficients(fitqr2)[1,][[2]]
-bgls2<-coefficients(fitqr2)[2,][[1]]
-bgus2<-coefficients(fitqr2)[2,][[2]]
-
-
 q05<-quantile(bacmic$MIC,0.05,na.rm=TRUE)[[1]]
 q10<-quantile(bacmic$MIC,0.1,na.rm=TRUE)[[1]]
 q90<-quantile(bacmic$MIC,0.9,na.rm=TRUE)[[1]]
@@ -182,18 +168,16 @@ q99<-quantile(bacmic$MIC,0.99,na.rm=TRUE)[[1]]
 
 
 
-bacODnormsigup<-subset(bacmic,CTODDiff_norm_Mean>0 &CTODDiff_norm_pval<0.05)$Index
-bacODnormsigdown<-subset(bacmic,CTODDiff_norm_Mean<0 &CTODDiff_norm_pval<0.05)$Index
+bacGTsigup<-subset(bacmic,GT_Interaction>0 & GT_p.value<0.05)$Index
+bacGTsigdown<-subset(bacmic,GT_Interaction<0 & GT_p.value<0.05)$Index
 
-bacODsigup<-subset(bacmic,CTODDiff_Mean>0 &CTODDiff_pval<0.05)$Index
-bacODsigdown<-subset(bacmic,CTODDiff_Mean<0 &CTODDiff_pval<0.05)$Index
+bacGTFDRup<-subset(bacmic,GT_Interaction>0 & GT_FDR<0.05)$Index
+bacGTFDRdown<-subset(bacmic,GT_Interaction<0 & GT_FDR<0.05)$Index
+# 
+# bacODsigup<-subset(bacmic,CTODDiff_Mean>0 &CTODDiff_pval<0.05)$Index
+# bacODsigdown<-subset(bacmic,CTODDiff_Mean<0 &CTODDiff_pval<0.05)$Index
 
 
-bacres95<-subset(bacmic,OD_T_Mean>OD_C_Mean*bgus+bgui)$Index
-bacsens05<-subset(bacmic,OD_T_Mean<OD_C_Mean*bgls+bgli)$Index
-
-bacres90<-subset(bacmic,OD_T_Mean>OD_C_Mean*bgus2+bgui2)$Index
-bacsens10<-subset(bacmic,OD_T_Mean<OD_C_Mean*bgls2+bgli2)$Index
 
 wormres95<-subset(bacmic,MIC>q95)$Index
 wormsens05<-subset(bacmic,MIC<q05)$Index
@@ -210,42 +194,43 @@ resmic5=list('Bacteria sensitive\nbottom 5%'=bacsens05,
             'Worms resistant\ntop 5%'=wormres95,
             'Worms sensitive\nbottom 5%'=wormsens05)
 
+bacFDRmictop10=list('Worms resistant top 10%'=wormres90,
+                    'KO synergistic'=bacGTFDRdown,
+                    'KO antagonistic'=bacGTFDRup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
 
 
+bacFDRmictop5=list('Worms resistant top 5%'=wormres95,
+                   'KO synergistic'=bacGTFDRdown,
+                   'KO antagonistic'=bacGTFDRup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
 
-resmic10=list('Worms resistant top 10%'=wormres90,
-              'Bacteria sensitive\nbottom 10%'=bacsens10,
-              'Bacteria resistant\ntop 10%'=bacres90) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
 
 
 bacsigmictop10=list('Worms resistant top 10%'=wormres90,
-              'Bacteria significantly\nsensitive (Trend)'=bacODnormsigdown,
-              'Bacteria significantly\nresistant (Trend)'=bacODnormsigup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
+              'KO synergistic'=bacGTsigdown,
+              'KO antagonistic'=bacGTsigup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
+
+
+bacsigmictop5=list('Worms resistant top 5%'=wormres95,
+                    'KO synergistic'=bacGTsigdown,
+                    'KO antagonistic'=bacGTsigup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
 
 
 bacsigmico5=list('Worms MIC>5'=wormresall5,
-                    'Bacteria significantly\nsensitive (Trend)'=bacODnormsigdown,
-                    'Bacteria significantly\nresistant (Trend)'=bacODnormsigup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
+                    'KO synergistic'=bacGTsigdown,
+                    'KO antagonistic'=bacGTsigup) # ,'Worms sensitive bottom 10%'=wormsens10 ,'Worms resistant all'=wormresall5
 
 
-
-
-plot(Venn(resmic10),show = list(Faces = FALSE), doWeights = FALSE)
+plot(Venn(bacFDRmictop10),show = list(Faces = FALSE), doWeights = FALSE)
 dev.copy2pdf(device=cairo_pdf,
-             file=paste(odir,"/Venn_Wormtop10-Bacteria_ByBacPercentage.pdf",sep=''),
+             file=paste(odir,"/Venn_Wormtop10-Bacteria_ByFDR.pdf",sep=''),
              width=6,height=6)
 
-#Draw simple
-dev.off()
-drawEuler(wormres90,
-          bacsens10,
-          bacres90,
-          c('Worms resistant top 10%',
-            'Bacteria sensitive\nbottom 10%',
-            'Bacteria resistant\ntop 10%'))
+
+plot(Venn(bacFDRmictop5),show = list(Faces = FALSE), doWeights = FALSE)
 dev.copy2pdf(device=cairo_pdf,
-             file=paste(odir,"/Venn_Wormtop10-Bacteria_ByBacPercentage_Euler.pdf",sep=''),width=4,height=4)
-dev.off()
+             file=paste(odir,"/Venn_Wormtop5-Bacteria_ByFDR.pdf",sep=''),
+             width=6,height=6)
+
 
 
 plot(Venn(bacsigmictop10),show = list(Faces = FALSE), doWeights = FALSE)
@@ -254,22 +239,27 @@ dev.copy2pdf(device=cairo_pdf,
              width=6,height=6)
 
 
+plot(Venn(bacsigmictop5),show = list(Faces = FALSE), doWeights = FALSE)
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/Venn_Wormtop5-Bacteria_BySignificance.pdf",sep=''),
+             width=6,height=6)
+
 plot(Venn(bacsigmico5),show = list(Faces = FALSE), doWeights = FALSE)
 dev.copy2pdf(device=cairo_pdf,
              file=paste(odir,"/Venn_WormMICo5-Bacteria_BySignificance.pdf",sep=''),
              width=6,height=6)
-
-#Draw simple
-dev.off()
-drawEuler(wormres90,
-          bacODnormsigdown,
-          bacODnormsigup,
-          c('Worms resistant top 10%',
-            'Bacteria significantly\nsensitive (Trend)',
-            'Bacteria significantly\nresistant (Trend)'))
-dev.copy2pdf(device=cairo_pdf,
-             file=paste(odir,"/Venn_Wormtop10-Bacteria_BySignificance_Euler.pdf",sep=''),width=4,height=4)
-dev.off()
+# 
+# #Draw simple
+# dev.off()
+# drawEuler(wormres90,
+#           bacODnormsigdown,
+#           bacODnormsigup,
+#           c('Worms resistant top 10%',
+#             'Bacteria significantly\nsensitive (Trend)',
+#             'Bacteria significantly\nresistant (Trend)'))
+# dev.copy2pdf(device=cairo_pdf,
+#              file=paste(odir,"/Venn_Wormtop10-Bacteria_BySignificance_Euler.pdf",sep=''),width=4,height=4)
+# dev.off()
 
 
 
@@ -281,15 +271,12 @@ unknowns<-list('Screened'=all,
                'ORF'=orfl)
 
 
-res<-list('Worms resistant top 10%'=wormres90,
-          'Bacteria sensitive bottom 10%'=bacsens10,
-          'Bacteria resistant top 10%'=bacres90,
-          'Bacteria sensitive bottom 5%'=bacsens05,
-          'Bacteria resistant top 5%'=bacres95,
-          'Bacteria significantly sensitive'=bacODsigdown,
-          'Bacteria significantly resistant'=bacODsigup,
-          'Bacteria significantly sensitive (Trend)'=bacODnormsigdown,
-          'Bacteria significantly resistant (Trend)'=bacODnormsigup)
+res<-list('Worms resistant top 5%'=wormres95,
+          'Worms resistant top 10%'=wormres90,
+          'Bacteria KO synergistic to 5FU'=bacGTsigdown,
+          'Bacteria KO antagonistic to 5FU'=bacGTsigup,
+          'Bacteria KO synergistic to 5FU (FDR)'=bacGTFDRdown,
+          'Bacteria KO antagonistic to 5FU (FDR)'=bacGTFDRup)
 
 
 lists<-c(unknowns,PLPla['PLP using'],res)
@@ -332,7 +319,7 @@ write.xlsx2(bmv, file=paste(ddir,'/Venn_Worm_Bacteria.xlsx',sep=''),
 
 
 
-#Biolog
+#Biolog update later
 allwb<-read.table(paste(ddir,'/Biolog_Combined_Summary_Statistics.csv',sep=''),sep=',',header=TRUE)
 
 odir<-'Figures_final/Biolog'

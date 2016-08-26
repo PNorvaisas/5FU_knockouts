@@ -360,6 +360,17 @@ nass$ECK<-nass$GeneID$ECK
 #nass$Gene<-nass$GeneID$Gene
 nass$GeneID<-NULL
 
+#nass<-transform(nass, ECKall=colsplit(nass$ECK, "/", c('ECK1','ECK2','ECK3','ECK4')))
+# nass$ECK1<-transform(nass, ECK=colsplit(nass$ECK, "/", c('ECK1','ECK2','ECK3','ECK4')))$ECK$ECK1
+# nass$ECK2<-transform(nass, ECK=colsplit(nass$ECK, "/", c('ECK1','ECK2','ECK3','ECK4')))$ECK$ECK2
+# nass$ECK3<-transform(nass, ECK=colsplit(nass$ECK, "/", c('ECK1','ECK2','ECK3','ECK4')))$ECK$ECK3
+# nass$ECK4<-transform(nass, ECK=colsplit(nass$ECK, "/", c('ECK1','ECK2','ECK3','ECK4')))$ECK$ECK3
+# nass$ECK<-NULL
+# nass$ECK<-nass$ECK1
+# nass$ECK1<-NULL
+# nassm<-melt(nass,measure.vars = c('ECK','ECK2','ECK3','ECK4'),value.name = 'ECK',variable.name = 'ECKs')
+# 
+
 
 nassECK<-nass$ECK
 fcECK<-bacmic$ECK
@@ -382,25 +393,32 @@ bacmicLB$GT_Interaction_norm<-scale(bacmicLB$GT_Interaction,center=TRUE,scale=TR
 mean(bacmicLB$GT_Interaction_norm,na.rm = TRUE)
 sd(bacmicLB$GT_Interaction_norm,na.rm = TRUE)
 
-ggplot(bacmicLB,aes(x=GT_Interaction_norm,y=X5FU_10uM))+
-  geom_point(aes(size=MIC,colour=MIC),alpha=0.9)+#,alpha=1
-  geom_text(aes(label=ifelse(Gene %in% mrklist |
-                               abs(GT_Interaction_norm) >2 |
-                               abs(X5FU_10uM) >2
+ggplot(bacmicLB,aes(x=GT_Interaction_norm,y=X5FU_37C))+
+  geom_hline(yintercept = 0,color='red',linetype='longdash',alpha=0.5)+
+  geom_vline(xintercept = 0,color='red',linetype='longdash',alpha=0.5)+
+  geom_hline(yintercept = 2,color='gray80',linetype='longdash')+
+  geom_vline(xintercept = 2,color='gray80',linetype='longdash')+
+  geom_hline(yintercept = -2,color='gray80',linetype='longdash')+
+  geom_vline(xintercept = -2,color='gray80',linetype='longdash')+
+  geom_point(size=0.5)+#,alpha=1
+  geom_text(aes(label=ifelse(Gene %in% c('yjjG','upp')|
+                               abs(GT_Interaction_norm) >2.5|
+                               abs(X5FU_37C) >2.5
                              ,as.character(Gene),'')),
-            hjust=-0.1, vjust=-0.1,size=5,colour = "red")+
-  scale_size(range=c(1,6),breaks=brks,name=micname)+
-  scale_colour_gradientn(colours = gradcols,trans = "log",
-                         breaks=brks,limits=c(5,100),guide='legend',name=micname)+
-  scale_y_continuous(breaks=seq(-6,4,by=1),limits=c(-6,4))+
-  scale_x_continuous(breaks=seq(-8,4,by=1),limits=c(-8,4))+  
-  ylab('KO 5-FU Interaction in LB')+
-  xlab('KO 5-FU Interaction in NGM')+
-  labs(color='Knockout\ninteraction with 5-FU')+
-  guides(color=guide_legend(), size = guide_legend())
+            hjust=-0.1, vjust=-0.1,size=3,colour = "red")+
+  scale_y_continuous(breaks=seq(-12,4,by=2))+
+  scale_x_continuous(breaks=seq(-8,4,by=2),limits=c(-8,3))+  
+  ylab('5-FU and KO interaction in LB')+
+  xlab('5-FU and KO interaction in NGM')
+
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/Media_LB-NGM_KO-5FU_Interaction.pdf",sep=''),
+             width=5,height=4)
 
 
 
+# abs(GT_Interaction_norm) >2 |
+# abs(X5FU_37C) >2
 
 
 bacmicLBm<-melt(bacmicLB,measure.vars = c('X5FU_10uM','X5FU_37C','Fluorocytosynes','Fluorodeoxyuridines','Fluorouridines','Bromodeoxyuridine'),
@@ -436,6 +454,31 @@ dev.copy2pdf(device=cairo_pdf,
              file=paste(odir,"/Media_Knockout_Drug_Interaction.pdf",sep=''),
              width=12,height=16)
 
+
+ggplot(subset(bacmicLBm,Interaction==''),aes(x=GT_Interaction_norm,y=Interaction))+
+  geom_hline(yintercept = 0,color='gray',linetype='longdash')+
+  geom_vline(xintercept = 0,color='gray',linetype='longdash')+
+  geom_hline(yintercept = 2,color='gray80',linetype='longdash')+
+  geom_vline(xintercept = 2,color='gray80',linetype='longdash')+
+  geom_hline(yintercept = -2,color='gray80',linetype='longdash')+
+  geom_vline(xintercept = -2,color='gray80',linetype='longdash')+
+  geom_point(aes(size=MIC,colour=MIC),alpha=0.9)+#,alpha=1
+  geom_text(aes(label=ifelse(Gene %in% mrklist |
+                               abs(GT_Interaction_norm) >2 |
+                               abs(Interaction) >2
+                             ,as.character(Gene),'')),
+            hjust=-0.1, vjust=-0.1,size=5,colour = "red")+
+  scale_size(range=c(1,6),breaks=brks,name=micname)+
+  scale_colour_gradientn(colours = gradcols,trans = "log",
+                         breaks=brks,limits=c(5,100),guide='legend',name=micname)+
+  scale_y_continuous(breaks=seq(-8,4,by=2),limits=c(-8,4))+
+  scale_x_continuous(breaks=seq(-8,4,by=2),limits=c(-8,4))+  
+  ylab('KO Drug Interaction in LB')+
+  xlab('KO 5-FU Interaction in NGM')+
+  labs(color='Knockout\ninteraction with 5-FU')+
+  guides(color=guide_legend(), size = guide_legend())+
+  geom_smooth(se = TRUE, method = "lm")+
+  facet_wrap(~Nassos,nrow=3,ncol=2)
 
 
 
@@ -552,41 +595,39 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Keio_Volcano_Control|Tr
 
 #WT relative
 
-
-repfit<-read.table(paste(ddir,'/Bacterial_growth_linear_fits.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
-sumfit<-data.frame(WTDiff_a=lmsum(lm(T_WTDiff ~ C_WTDiff,data=bacmic))$a,
-                    WTDiff_b=lmsum(lm(T_WTDiff ~ C_WTDiff,data=bacmic))$b,
-                    WTDiff_r2=lmsum(lm(T_WTDiff ~ C_WTDiff,data=bacmic))$r2,
-                    WTDiff_pval=lmsum(lm(T_WTDiff ~C_WTDiff,data=bacmic))$p2)
 wtfit<-lm(T_WTDiff ~ C_WTDiff,data=bacmic)
 
 #brks<-c(0,5,25,50,100)
+showKO<-c('upp','yjjG')#,'gcvA','aceE','gltA'
 
-ggplot(bacmic,aes(x=C_WTDiff,y=T_WTDiff))+
+logODcor<-ggplot(bacmic,aes(x=C_WTDiff,y=T_WTDiff))+
   geom_errorbarh(aes(xmax=C_WTDiff+C_WTDiff_SD,xmin=C_WTDiff-C_WTDiff_SD),
                  height=0,alpha=erralpha,color=errcolor)+
   geom_errorbar(aes(ymax=T_WTDiff+T_WTDiff_SD,ymin=T_WTDiff-T_WTDiff_SD),
                 width=0,alpha=erralpha,color=errcolor)+
   geom_abline(data=sumfit,aes(intercept=WTDiff_b,slope=WTDiff_a),alpha=0.5,color='red')+
+  geom_abline(intercept=0,slope=1,alpha=0.2,aes(color='grey'),linetype='longdash')+
   geom_point(aes(size=MIC,colour=MIC),alpha=0.99)+
   scale_colour_gradientn(colours = gradcols,trans = "log",
                          breaks=brks,limits=c(5,100),guide='legend',name=micname)+
   scale_size(range=c(1,6),breaks=brks,name=micname)+
-  geom_abline(intercept=0,slope=1,alpha=0.2,aes(color='grey'),linetype='longdash')+
+  ylim(-2.5,0.75)+
   annotate('text',x = -1.5, y = 0.25, label = lm_eqn(wtfit)$Full, parse = TRUE,color='red')+
-  geom_text(aes(label=ifelse(Gene %in% c('upp','yjjG') |
-                               C_WTDiff< -0.9 |
-                               T_WTDiff< -0.9 |
-                               C_WTDiff> 0.1 |
-                               T_WTDiff> 0.2 |
-                               MIC >90,
-                             as.character(Gene),'')),hjust=-0.1, vjust=-0.1,size=4)+#
+  geom_text(aes(label=ifelse(Gene %in% showKO,
+                             as.character(Gene),'')),
+            hjust=-0.1, vjust=-0.1,size=5,colour = "red")+#
   ggtitle('Treatment/Control comparison of bacterial growth logFC\n(Knockout/WT)')+
   xlab('E. coli growth logFC (KO/WT) - Control')+ ylab('E. coli growth logFC (KO/WT) - 5-FU Treatment')+
   guides(color=guide_legend(), size = guide_legend())
+logODcor
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Keio_WT_relative_Scatter.pdf",sep = ''),
-             width=9,height=6)
-
+             width=6,height=5)
+# |
+#   C_WTDiff< -0.9 |
+#   T_WTDiff< -0.9 |
+#   C_WTDiff> 0.1 |
+#   T_WTDiff> 0.2 |
+#   MIC >90
 
 
 #CTWTDiff_norm_pval<0.05 & abs(CTWTDiff_norm_Mean)>0.75 & !Gene=='WT'
