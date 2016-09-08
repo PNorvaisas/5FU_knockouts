@@ -12,8 +12,6 @@ library('rafalib')
 library(multcomp)
 library('contrast')
 
-
-
 library(ellipse)
 
 theme_set(theme_light())
@@ -163,7 +161,7 @@ pntalpha<-0.8
 erralpha<-1
 errcolor<-'grey90'
 
-theme_set(theme_light())
+
 BiologNGM<-ggplot(clean,aes(x=NGMDiff_C_Mean,y=NGMDiff_T_Mean))+
   geom_abline(aes(intercept=NGMb,slope=NGMa),alpha=0.5,color='red')+
   geom_errorbarh(aes(xmax=NGMDiff_C_Mean+NGMDiff_C_SD,xmin=NGMDiff_C_Mean-NGMDiff_C_SD),height=0,alpha=erralpha,color=errcolor)+
@@ -181,12 +179,10 @@ BiologNGM<-ggplot(clean,aes(x=NGMDiff_C_Mean,y=NGMDiff_T_Mean))+
 BiologNGM
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Scatter_Control|Treatment_NGMsubs_clean.pdf",sep = ''),
              width=7,height=4)
+morenames<-c('L-Lyxose','Orotic acid-PM5','alpha-Methyl-D-Glucoside','L-Sorbose')
 BiologNGM+
-#   geom_text(aes(label=ifelse(!point.in.polygon(NGMDiff_T_Mean, NGMDiff_C_Mean, df_NGMT_NGMC$NGMDiff_T_Mean, df_NGMT_NGMC$NGMDiff_C_Mean, mode.checked=FALSE) &
-#                                          !UniqueName %in% mrknames &
-#                                          (W_Median>3|MT_p.value<0.05),as.character(UniqueName),''),colour=W_Median),
-#                       hjust=-0.1, vjust=-0.75,size=txtsize,alpha=txtalpha)+
-  geom_text(aes(label=ifelse(UniqueName %in% mrknames,as.character(UniqueName),'')),
+  geom_text(aes(label=ifelse(UniqueName %in% mrknames|
+                             UniqueName %in% morenames,as.character(UniqueName),'')),
             hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=mrkcolor)
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Scatter_Control|Treatment_NGMsubs.pdf",sep = ''),
              width=7,height=4)
@@ -221,6 +217,18 @@ BiologODI+
             hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=mrkcolor)
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Scatter_ControlvsTreatment_Raw.pdf",sep = ''),
              width=7,height=4)
+
+#Relationship between W_median and MT_Interaction
+ggplot(allwb,aes(x=as.factor(W_Median),y=MT_Interaction))+geom_boxplot()
+
+
+#Relationship between W_median and MT_Interaction
+ggplot(allwb,aes(x=as.factor(W_Median),y=NGMDiff_C_Mean))+geom_boxplot()
+
+
+ggplot(allwb,aes(y=W_Median,x=NGMDiff_C_Mean))+geom_point()
+
+ggplot(allwb,aes(x=as.factor(W_Median),y=NGMDiff_T_Mean))+geom_boxplot()
 
 
 #
@@ -332,57 +340,18 @@ bgg <- colorRampPalette(c("blue", "gray", "green"))(n = 32)
 reorderfun_mean = function(d,w) { reorder(d, w, agglo.FUN = mean) }
 reorderfun_median = function(d,w) { reorder(d, w, agglo.FUN = median) }
 
-for (tp in c('CTDiff','CTDiff_norm')) {
-  insided_f_rep<-dcast(insided_f,Plate+Well+Name~Replicate,
-                       fun.aggregate = NULL,value.var = c(tp),fill = as.numeric(NA))
-  ins_f_repc<-subset(insided_f_rep,Well!='A1' & !Name %in% c('Positive Control','Negative Control'))
-  heat<-merge(ins_f_repc,allwb[,c('Plate','Well','Name','UniqueName','W1','W2','W3','W4','CTDiff_pval','CTDiff_norm_pval')],by=c('Plate','Well','Name'))
-  heat$Namepnorm<-paste(heat$UniqueName,ifelse(stars.pval(heat$CTDiff_norm_pval)!=' ',paste(' (',stars.pval(heat$CTDiff_norm_pval),')',sep=''),''),sep='')
-  heat$Namep<-paste(heat$UniqueName,ifelse(stars.pval(heat$CTDiff_pval)!=' ',paste(' (',stars.pval(heat$CTDiff_pval),')',sep=''),''),sep='')
-  if (tp=='CTDiff') {
-    Names<-heat$Namep
-    tpname<-''
-  } else {
-    Names<-heat$Namepnorm
-    tpname<-'-normalised'
-  }
-  
-  comp<-c('1','2','3','4')
-  st<-heat[,comp]
-  
-  for (uk in c(TRUE,FALSE)) {
-    if (uk){
-      usekey<-'_Key'
-      wd<-12
-      he<-10
-    } else {
-      usekey<-''
-      wd<-4
-      he<-40
-    }
-    heatmap.2(as.matrix(st),key=uk,Colv=FALSE,trace='none',labRow=Names,
-              labCol=comp,col=bgg,
-              xlab='Replicate',
-              dendrogram="row",scale="none",na.color="grey",
-              cexRow=0.4,cexCol=1,
-              margin=c(8,16),
-              lwid=c(0.2,0.8),
-              reorderfun=reorderfun_mean,symkey=TRUE)
-    dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Bacteria_Heatmap_logFC',tpname,usekey,'.pdf',sep = ''),
-                 width=wd,height=he)
-  }
-}
-
 
 
 #Heatmaps worms
 allwbh<-subset(allwb, Well!='A1' &
                  !Name %in% c('Positive Control','Negative Control','2-Hydroxy Benzoic Acid') &
-                 (W_Median>1 | MT_p.value<0.05))
+                 (W_Median>1 | MT_FDR<0.05))
 
 
 heat<-allwbh[order(allwbh$W_Mean,decreasing=TRUE),]
-heat$Namep<-paste(heat$UniqueName,ifelse(stars.pval(heat$MT_p.value)!=' ',paste(' (',stars.pval(heat$MT_p.value),')',sep=''),''),sep='')
+#heat$Namep<-paste(heat$UniqueName,ifelse(stars.pval(heat$MT_p.value)!=' ',paste(' (',stars.pval(heat$MT_p.value),')',sep=''),''),sep='')
+#heat$NameFDR<-paste(heat$UniqueName,ifelse(stars.pval(heat$MT_FDR)!=' ',paste(' (',stars.pval(heat$MT_FDR),')',sep=''),''),sep='')
+
 Names<-heat$UniqueName
 comp<-c('W1','W2','W3','W4')
 st<-heat[,comp]
@@ -399,29 +368,6 @@ data<-data.matrix(st)
 
 bor <- colorRampPalette(c("black",'yellow', "orange", "red"))(n = 5)
 
-for (uk in c(TRUE,FALSE)) {
-  if (uk){
-    usekey<-'_Key'
-    wd<-12
-    he<-10
-  } else {
-    usekey<-''
-    wd<-4
-    he<-12
-  }
-  #hmap<-
-  heatmap.2(data,key=uk,Colv=FALSE,Rowv=FALSE,trace='none',labRow=Names,
-            labCol=comp,col=bor,
-            xlab='Replicate',
-            dendrogram="none",scale="none",na.color="grey",
-            cexRow=0.6,cexCol=1,margin=c(8,16),
-            lwid=c(0.2,0.8),reorderfun=reorderfun_mean,symkey=FALSE)
-  #hmap ,reorderfun=reorderfun_mean
-  #reorderfun=reorderfun_median
-  dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Worms_Heatmap_Score_WMo1_BacSig',usekey,'.pdf',sep = ''),
-               width=wd,height=he)
-}
-
 hmap<-heatmap.2(data,key=uk,Colv=FALSE,Rowv=FALSE,trace='none',labRow=Names,
                 labCol=comp,col=bor,
                 xlab='Replicate',
@@ -432,11 +378,11 @@ hmap<-heatmap.2(data,key=uk,Colv=FALSE,Rowv=FALSE,trace='none',labRow=Names,
 #Bacteria heatmap
 
 dat<-heat
-dat$Namepnorm<-paste(dat$UniqueName,ifelse(stars.pval(dat$MT_p.value)!=' ',paste(' (',stars.pval(dat$MT_p.value),')',sep=''),''),sep='')
+#dat$Namepnorm<-paste(dat$UniqueName,ifelse(stars.pval(dat$MT_p.value)!=' ',paste(' (',stars.pval(dat$MT_p.value),')',sep=''),''),sep='')
 
-dat$Namepnorm<-paste(dat$UniqueName,ifelse(stars.pval(dat$MT_FDR)!=' ',paste(' (',stars.pval(dat$MT_FDR),')',sep=''),''),sep='')
+#dat$Namepnorm<-paste(dat$UniqueName,ifelse(stars.pval(dat$MT_FDR)!=' ',paste(' (',stars.pval(dat$MT_FDR),')',sep=''),''),sep='')
 
-dat$pnorm<-stars.pval(dat$MT_p.value)
+dat$pnorm<-stars.pval(dat$MT_FDR)
 
 Names<-dat$UniqueName
 Names<-dat$pnorm
@@ -452,5 +398,5 @@ heatmap.2(as.matrix(dats),key=TRUE,Colv=FALSE,trace='none',labRow=Names,
           cexRow=0.4,cexCol=1,margin=c(8,16),
           lwid=c(0.2,0.8),reorderfun=reorderfun_mean,symkey=TRUE)
 
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Bacteria_Heatmap_logFC-mean_Worm-ordered_WMo1_BacSig_pval_new.pdf',sep = ''),
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Bacteria_Heatmap_logFC-mean_Worm-ordered_WMo1_BacSig_names_new.pdf',sep = ''),
              width=4,height=12)

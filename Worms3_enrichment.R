@@ -88,7 +88,7 @@ circsummic<-ddply(circmr,.(Category,Term_ID),summarise, Size_KeioS=as.numeric(le
 
 circm<-merge(circmr,circsummic,by=c('Category','Term_ID'),all.x=TRUE)
 
-
+circm<-subset(circm,Category=='KEGG')
 
 unique(allannot$Category)
 
@@ -172,28 +172,22 @@ circmst<-dcast(circmstatm,Category+Term_ID+Term+Size_EC+Size_KeioS+Size_MICo5~ M
 
 
 
-circmBAll<-subset(circm,MIC>micthres & GT_p.value<0.05)
+# circmBAll<-subset(circm,MIC>micthres & GT_p.value<0.05)
+# circmBAll$Interaction<-'BacInteracting'
+# circmBSyn<-subset(circm,MIC>micthres & GT_Interaction < 0 & GT_p.value<0.05)
+# circmBSyn$Interaction<-'BacSynergistic'
+# circmBAnt<-subset(circm,MIC>micthres & GT_Interaction > 0 & GT_p.value<0.05)
+# circmBAnt$Interaction<-'BacAntagonistic'
+
+circmBAll<-subset(circm,MIC>micthres & GT_FDR < 0.05)
 circmBAll$Interaction<-'BacInteracting'
-circmBSyn<-subset(circm,MIC>micthres & GT_Interaction < 0 & GT_p.value<0.05)
+circmBSyn<-subset(circm,MIC>micthres & GT_Interaction < 0 & GT_FDR<0.05)
 circmBSyn$Interaction<-'BacSynergistic'
-circmBAnt<-subset(circm,MIC>micthres & GT_Interaction > 0 & GT_p.value<0.05)
+circmBAnt<-subset(circm,MIC>micthres & GT_Interaction > 0 & GT_FDR<0.05)
 circmBAnt$Interaction<-'BacAntagonistic'
 
-circmBAll_FDR<-subset(circm,MIC>micthres & GT_FDR < 0.05)
-circmBAll_FDR$Interaction<-'BacInteracting_FDR'
-circmBSyn_FDR<-subset(circm,MIC>micthres & GT_Interaction < 0 & GT_FDR<0.05)
-circmBSyn_FDR$Interaction<-'BacSynergistic_FDR'
-circmBAnt_FDR<-subset(circm,MIC>micthres & GT_Interaction > 0 & GT_FDR<0.05)
-circmBAnt_FDR$Interaction<-'BacAntagonistic_FDR'
-
 circmBSA_p<-merge(circmBSyn,circmBAnt,all=TRUE)
-circmB_p<-merge(circmBSA_p,circmBAll,all=TRUE)
-
-circmBSA_FDR<-merge(circmBSyn_FDR,circmBAnt_FDR,all=TRUE)
-circmB_FDR<-merge(circmBSA_FDR,circmBAll_FDR,all=TRUE)
-
-
-circmB<-merge(circmB_p,circmB_FDR,all=TRUE)
+circmB<-merge(circmBSA_p,circmBAll,all=TRUE)
 
 
 
@@ -214,16 +208,10 @@ hits<-length(subset(bacmicnoWT,MIC>5)$Gene)
 tot
 hits
 
-#Hits by p.value
-bacInt<-length(subset(bacmic,MIC>micthres & GT_p.value<0.05)$Gene)
-bacSyn<-length(subset(bacmic,MIC>micthres & GT_Interaction < 0 &GT_p.value<0.05)$Gene)
-bacAnt<-length(subset(bacmic,MIC>micthres & GT_Interaction > 0 &GT_p.value<0.05)$Gene)
-
 #Hits by FDR
-bacInt_FDR<-length(subset(bacmic,MIC>micthres & GT_FDR<0.05)$Gene)
-bacSyn_FDR<-length(subset(bacmic,MIC>micthres & GT_Interaction < 0 &GT_FDR<0.05)$Gene)
-bacAnt_FDR<-length(subset(bacmic,MIC>micthres & GT_Interaction > 0 &GT_FDR<0.05)$Gene)
-
+bacInt<-length(subset(bacmic,MIC>micthres & GT_FDR<0.05)$Gene)
+bacSyn<-length(subset(bacmic,MIC>micthres & GT_Interaction < 0 &GT_FDR<0.05)$Gene)
+bacAnt<-length(subset(bacmic,MIC>micthres & GT_Interaction > 0 &GT_FDR<0.05)$Gene)
 
 
 
@@ -235,42 +223,24 @@ circms$Coverage_BacInteracting<-circms$Size_BacInteracting/circms$Size_MICo5
 circms$Coverage_BacSynergistic<-circms$Size_BacSynergistic/circms$Size_MICo5
 circms$Coverage_BacAntagonistic<-circms$Size_BacAntagonistic/circms$Size_MICo5
 
-circms$Coverage_BacInteracting_FDR<-circms$Size_BacInteracting_FDR/circms$Size_MICo5
-circms$Coverage_BacSynergistic_FDR<-circms$Size_BacSynergistic_FDR/circms$Size_MICo5
-circms$Coverage_BacAntagonistic_FDR<-circms$Size_BacAntagonistic_FDR/circms$Size_MICo5
 
 
 circms$Enrichment_MIC_p.value<-phyper(circms$Size_MICo5-1,hits,tot-hits,circms$Size_KeioS,lower.tail = FALSE)
-#circms$Enrichment_MIC_FDR<-p.adjust(circms$Enrichment_MIC_p.value,method = 'fdr')
+circms$Enrichment_MIC_FDR<-p.adjust(circms$Enrichment_MIC_p.value,method = 'fdr')
   
 circms$Enrichment_BacInt_p.value<-phyper(circms$Size_BacInteracting-1,bacInt,hits-bacInt,circms$Size_MICo5,lower.tail = FALSE)
 circms$Enrichment_BacSyn_p.value<-phyper(circms$Size_BacSynergistic-1,bacSyn,hits-bacSyn,circms$Size_MICo5,lower.tail = FALSE)
 circms$Enrichment_BacAnt_p.value<-phyper(circms$Size_BacAntagonistic-1,bacAnt,hits-bacAnt,circms$Size_MICo5,lower.tail = FALSE)
 
 
-#By FDR adjustment on enrichment
-# circms$Enrichment_BacInt_FDRad<-p.adjust(circms$Enrichment_BacInt_p.value,method = 'fdr')
-# circms$Enrichment_BacSyn_FDRad<-p.adjust(circms$Enrichment_BacSyn_p.value,method = 'fdr')
-# circms$Enrichment_BacAnt_FDRad<-p.adjust(circms$Enrichment_BacAnt_p.value,method = 'fdr')
-
-#By FDR adjustoment on KOs
-circms$Enrichment_BacInt_FDR<-phyper(circms$Size_BacInteracting_FDR-1,bacInt_FDR,hits-bacInt_FDR,circms$Size_MICo5,lower.tail = FALSE)
-circms$Enrichment_BacSyn_FDR<-phyper(circms$Size_BacSynergistic_FDR-1,bacSyn_FDR,hits-bacSyn_FDR,circms$Size_MICo5,lower.tail = FALSE)
-circms$Enrichment_BacAnt_FDR<-phyper(circms$Size_BacAntagonistic_FDR-1,bacAnt_FDR,hits-bacAnt_FDR,circms$Size_MICo5,lower.tail = FALSE)
-
 
 subset(circms,Enrichment_BacInt_p.value<0.05)[,c('Size_EC','Size_KeioS','Size_MICo5','Size_BacInteracting','Enrichment_BacInt_p.value','Category','Term_ID','Term')]
 subset(circms,Enrichment_BacSyn_p.value<0.05)[,c('Size_EC','Size_KeioS','Size_MICo5','Size_BacSynergistic','Enrichment_BacSyn_p.value','Category','Term_ID','Term')]
 subset(circms,Enrichment_BacAnt_p.value<0.05)[,c('Size_EC','Size_KeioS','Size_MICo5','Size_BacAntagonistic','Enrichment_BacAnt_p.value','Category','Term_ID','Term')]
 
-
-subset(circms,Enrichment_BacInt_FDR<0.05)[,c('Size_EC','Size_KeioS','Size_MICo5','Size_BacInteracting','Enrichment_BacInt_FDR','Category','Term_ID','Term')]
-subset(circms,Enrichment_BacAnt_FDR<0.05)[,c('Size_EC','Size_KeioS','Size_MICo5','Size_BacAntagonistic','Enrichment_BacAnt_FDR','Category','Term_ID','Term')]
-subset(circms,Enrichment_BacSyn_FDR<0.05)[,c('Size_EC','Size_KeioS','Size_MICo5','Size_BacSynergistic','Enrichment_BacSyn_FDR','Category','Term_ID','Term')]
-
-
-subset(circms,Enrichment_MIC_p.value<0.05 & Category=='KEGG')[,c('Size_EC','Size_KeioS','Size_MICo5','Category','Term_ID','Term')]
+subset(circms,Enrichment_MIC_FDR<0.05 & Category=='KEGG')[,c('Size_EC','Size_KeioS','Size_MICo5','Category','Term_ID','Term','Enrichment_MIC_FDR')]
 #subset(circms,Enrichment_MIC_FDR<0.05 & Category=='KEGG')[,c('Size_EC','Size_KeioS','Size_MICo5','Category','Term_ID','Term')]
+subset(circms,Enrichment_MIC_p.value<0.05 & Category=='KEGG')[,c('Size_EC','Size_KeioS','Size_MICo5','Category','Term_ID','Term','Enrichment_MIC_FDR','Enrichment_MIC_p.value')]
 
 
 
@@ -299,7 +269,7 @@ circms_re<-circms_re[, -grep("OD_Mean", colnames(circms_re))]
 circms_re<-circms_re[, -grep("LB_22hr", colnames(circms_re))]
 
 circms_rew<-circms_re[,c(1:6,
-                        match(c('Size_BacAntagonistic'),colnames(circms_re)):match(c('Enrichment_BacAnt_FDR'),colnames(circms_re)),
+                        match(c('Size_BacAntagonistic'),colnames(circms_re)):match(c('Enrichment_BacAnt_p.value'),colnames(circms_re)),
                         7: (match(c('Size_BacAntagonistic'),colnames(circms_re))-1) )]
 
 annotexpl<-read.table(paste(ddir,'/Enrichment_distribution_column_explanation.csv',sep=''),
@@ -313,12 +283,17 @@ explrm<-explrm[match(colnames(circms_rew),explrm$Column),]
 write.csv(circms_rew,
           paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.csv',sep=''),
           row.names = FALSE)
+
 write.xlsx2(explrm, file=paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.xlsx',sep=''),
            sheetName="Readme",row.names = FALSE,showNA=FALSE)
 write.xlsx2(circms_rew, file=paste(ddir,'/Enrichment_Distributions_for_terms_MICo',micthres,'.xlsx',sep=''),
            sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
+write.xlsx2(explrm, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 2/final files/Table S2.xlsx',
+            sheetName="Readme_Enrichment",row.names = FALSE,showNA=FALSE,append = TRUE)
+write.xlsx2(circms_rew, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 2/final files/Table S2.xlsx',
+            sheetName="Enrichment", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
 #write.csv(enr,paste(ddir,'/Enrichment_Complete_data_term_distribution_MICo',micthres,'.csv',sep=''))

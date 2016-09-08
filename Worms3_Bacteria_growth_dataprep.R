@@ -12,6 +12,12 @@ library('rafalib')
 library(multcomp)
 library('contrast')
 
+theme_set(theme_light())
+
+theme_update(panel.background = element_rect(colour = "black"),
+             axis.text = element_text(colour = "black"))
+
+
 
 #Output folder:
 odir<-'Figures_final'
@@ -113,14 +119,22 @@ bac4all$Index<-as.factor(bac4all$Index)
 bac4all$Gene<-relevel(bac4all$Gene,ref = 'WT')
 bac4all$Index<-relevel(bac4all$Index,ref = 'WT__')
 
+#Is yjjG present
+yjjG<-FALSE
 
 #No duplicates, save to remove by gene name
-
-lowmicbac<-c('dcp','fre','glgC','oxyR','ybdR','yecE','yehA','yghT','ytjB')
+if (yjjG==FALSE) {
+  lowmicbac<-c('dcp','fre','glgC','oxyR','ybdR','yecE','yehA','yghT','ytjB','yjjG')
+} else {
+  lowmicbac<-c('dcp','fre','glgC','oxyR','ybdR','yecE','yehA','yghT','ytjB')
+}
+#
 
 table(as.character(subset(bac4all,Gene %in% lowmicbac)$Gene))
 
 poorgrowth<-c('atpB','atpE','atpF','atpG','atpE','lpd','sucA','atpE','ydcT','glnA')
+
+
 
 dmw<-subset(bac4all,Gene!='Blank' & ! Gene %in% lowmicbac & ! Gene %in% poorgrowth)
 
@@ -166,8 +180,12 @@ dmwm<-melt(dmw,id.vars = c('Gene','Index','Plate','Well','Drug','Replicate','Npl
 dmws<-dcast(dmwm,Gene+Index+Plate+Well+Nplate+NWell+Replicate~Drug+Measure,
                   fun.aggregate = NULL,value.var = c('Value'),fill = as.numeric(NA))
 
+if (yjjG==TRUE) {
+  write.csv(dmws,paste(ddir,'/Bacterial_growth_with_yjjG.csv',sep=''),row.names = FALSE)
+} else {
+  write.csv(dmws,paste(ddir,'/Bacterial_growth.csv',sep=''),row.names = FALSE)
+}
 
-write.csv(dmws,paste(ddir,'/Bacterial_growth.csv',sep=''),row.names = FALSE)
 
 
 # ggplot(dmws,aes(x=WTDiff_C))
@@ -213,7 +231,14 @@ outlierTest(fitGTt)
 otGT<-outlierTest(fitGTt)
 outlistGT<-c(names(otGT$rstudent))
 
+if (yjjG==FALSE) {
+  outlistGT<-c()
+}
+
 subset(dmwallsum,rownames(dmwallsum) %in% outlistGT)
+
+
+
 
 fitGT<-lm(GT_Interaction_temp_Mean ~ C_WTDiff_Mean,
            data=subset(dmwallsum,!rownames(dmwallsum) %in% outlistGT))
@@ -231,7 +256,13 @@ outlierTest(fitODt)
 otOD<-outlierTest(fitODt)
 outlistOD<-c(names(otOD$rstudent))
 
+if (yjjG==FALSE) {
+  outlistOD<-c()
+}
+
 subset(dmwallsum,rownames(dmwallsum) %in% outlistOD)
+
+
 
 fitOD<-lm(ODDiff_temp_Mean ~ C_OD_Mean,
            data=subset(dmwallsum,!rownames(dmwallsum) %in% outlistOD))
@@ -299,7 +330,15 @@ outlierTest(fitbCTt)
 otbCT<-outlierTest(fitbCTt)
 outlistbCT<-c(names(otbCT$rstudent))
 
+if (yjjG==FALSE) {
+  outlistbCT<-c()
+}
+
 bacCTf[outlistbCT,]
+
+
+
+
 
 bacCTfclean<-subset(bacCTf,!rownames(bacCTf) %in% outlistbCT)
 
@@ -355,8 +394,15 @@ qqPlot(genfitbact, main="QQ Plot")
 
 outlistbaclog<-c(names(otbl$rstudent))
 #Outliers:
+if (yjjG==FALSE) {
+  outlistbaclog<-c()
+}
+
 print('Outliers in knockouts')
 cfbac[outlistbaclog,]
+
+#No outliers
+
 
 #Get final fit
 genfitbac=lm(w3~w1,data=subset(cfbac,!rownames(cfbac) %in% outlistbaclog))
@@ -373,6 +419,7 @@ cfbac$w3a<-cfbac$w3-(abl*cfbac$w1+bbl)
 remgens<-as.character(cfbac[outlistbaclog,'Index'])
 print('Outliers')
 remgens
+
 cleancfbac<-subset(cfbac,!Index %in% remgens)
 genfitbaca=lm(w3a~w1,data=cleancfbac)
 genresbaca=summary(genfitbaca)
@@ -459,5 +506,12 @@ bacall<-bacallt[,c(1:3,14,4:7,9:12,
                    26,15,27:29)]
 colnames(bacall)
 
-write.csv(bacall,paste(ddir,'/Bacterial_growth_summary.csv',sep=''),row.names = FALSE)
+
+if (yjjG==TRUE) {
+  write.csv(bacall,paste(ddir,'/Bacterial_growth_summary_with_yjjG.csv',sep=''),row.names = FALSE)
+} else {
+  write.csv(bacall,paste(ddir,'/Bacterial_growth_summary.csv',sep=''),row.names = FALSE)
+  
+}
+
 

@@ -292,6 +292,10 @@ allfull$MIC_avg<-NULL
 allfull[allfull$Gene=='WT','MIC']<-1
 allfull[allfull$Gene=='WT','MIC_SD']<-0
 
+allfull[allfull$Gene=='yjjG','MIC']<-5
+allfull[allfull$Gene=='yjjG','5']<-0
+allfull[allfull$Gene=='yjjG','MIC_SD']<-NA
+
 # allfull[allfull$Gene=='upp','MIC']<-15
 # allfull[allfull$Gene=='upp','MIC_SD']<-0
 

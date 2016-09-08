@@ -28,6 +28,9 @@ nodata<-read.table(paste(ddir,'/Worms_nodata.csv',sep=''),sep=',',quote = '"',he
 mics<-read.table(paste(ddir,'/Worm_MICs.csv',sep=''),sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 colnames(mics)<-gsub('X','',colnames(mics))
 
+
+bacall<-read.table(paste(ddir,'/Bacterial_growth_summary_with_yjjG.csv',sep=''),sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+
 bacall<-read.table(paste(ddir,'/Bacterial_growth_summary.csv',sep=''),sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 
 
@@ -36,7 +39,7 @@ bacall<-read.table(paste(ddir,'/Bacterial_growth_summary.csv',sep=''),sep=',',qu
 poorgrowth<-c('atpB','atpE','atpF','atpG','atpE','lpd','sucA','atpE','ydcT','glnA')
 
 
-lowmicbac<-c('dcp','fre','glgC','oxyR','ybdR','yecE','yehA','yghT','ytjB')
+#lowmicbac<-c('dcp','fre','glgC','oxyR','ybdR','yecE','yehA','yghT','ytjB')
 
 bacmict<-merge(mics,bacall,id=c('Gene','Plate','Well'),all.x = TRUE)
 
@@ -80,7 +83,7 @@ devdel$NComment<-'Causes developmental delay'
 
 
 undisrupted<-subset(bacmict,Gene %in% keioundis$Gene)
-undisrupted$NComment<-'Undisrupted gene'
+undisrupted$NComment<-'Undisrupted gene, possibly essential (Yamamoto2009)'
 
 #Undisrupted and not in data
 unmis<-setdiff(keioundis$Gene,undisrupted$Gene)
@@ -145,17 +148,27 @@ write.csv(bacmicw,paste(ddir,'/MICs_and_bacterial_growth-Complete.csv',sep=''),r
 write.xlsx2(explrd, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
 write.xlsx2(bacmicw, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
+write.xlsx2(explrd, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 2/final files/Table S2.xlsx',
+            sheetName="Readme_All-data",row.names = FALSE,showNA=FALSE,append = TRUE)
+write.xlsx2(bacmicw, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 2/final files/Table S2.xlsx',
+            sheetName="All-data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
 #Knockouts removed from screen
 
-explrm<-subset(micexpl,Column %in% colnames(remset))
-explrm<-explrm[match(colnames(remset),explrm$Column),]
-write.csv(remset,paste(ddir,'/All_removed_from_screen.csv',sep=''),row.names = FALSE)
+remsetw<-remset[,! colnames(remset) %in% c('C_OD_Mean','C_OD_SD','T_OD_Mean','T_OD_SD')]
+
+explrm<-subset(micexpl,Column %in% colnames(remsetw))
+explrm<-explrm[match(colnames(remsetw),explrm$Column),]
+write.csv(remsetw,paste(ddir,'/All_removed_from_screen.csv',sep=''),row.names = FALSE)
 write.xlsx2(explrm, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
-write.xlsx2(remset, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
+write.xlsx2(remsetw, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
+write.xlsx2(explrm, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 2/final files/Table S2.xlsx',
+            sheetName="Readme_Removed",row.names = FALSE,showNA=FALSE,append = TRUE)
+write.xlsx2(remsetw, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 2/final files/Table S2.xlsx',
+            sheetName="Removed", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
 

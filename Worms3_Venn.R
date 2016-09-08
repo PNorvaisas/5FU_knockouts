@@ -331,159 +331,104 @@ w1<-subset(allwb,W_Median>1)$UniqueName
 w2<-subset(allwb,W_Median>2)$UniqueName
 w3<-subset(allwb,W_Median>3)$UniqueName
 
-sig_C<-subset(allwb,NGMDiff_C_pval<0.05)$UniqueName
-sig_T<-subset(allwb,NGMDiff_T_pval<0.05)$UniqueName
-sig_CT<-subset(allwb,CTDiff_pval<0.05)$UniqueName
-sig_CTnorm<-subset(allwb,CTDiff_norm_pval<0.05)$UniqueName
 
-sig_Cp<-subset(allwb,NGMDiff_C_pval<0.05 & NGMDiff_C_Mean>0)$UniqueName
-sig_Tp<-subset(allwb,NGMDiff_T_pval<0.05 & NGMDiff_T_Mean>0)$UniqueName
-sig_CTp<-subset(allwb,CTDiff_pval<0.05 & CTDiff_Mean>0)$UniqueName
-sig_CTnormp<-subset(allwb,CTDiff_norm_pval<0.05 & CTDiff_norm_Mean>0)$UniqueName
+sig_A_MT_p<-subset(allwb,MT_p.value < 0.05 & MT_Interaction > 0)$UniqueName
+sig_S_MT_p<-subset(allwb,MT_p.value < 0.05 & MT_Interaction < 0)$UniqueName
+sig_A_MT_FDR<-subset(allwb,MT_FDR < 0.05 & MT_Interaction > 0)$UniqueName
+sig_S_MT_FDR<-subset(allwb,MT_FDR < 0.05 & MT_Interaction < 0)$UniqueName
 
-sig_Cm<-subset(allwb,NGMDiff_C_pval<0.05 & NGMDiff_C_Mean<0)$UniqueName
-sig_Tm<-subset(allwb,NGMDiff_T_pval<0.05 & NGMDiff_T_Mean<0)$UniqueName
-sig_CTm<-subset(allwb,CTDiff_pval<0.05 & CTDiff_Mean<0)$UniqueName
-sig_CTnormm<-subset(allwb,CTDiff_norm_pval<0.05 & CTDiff_norm_Mean<0)$UniqueName
+
 
 #Just sets
-sigMet<-list('Treatment: Metabolite/NGM'=sig_T,'Control: Metabolite/NGM'=sig_C,'Treatment/Trend (NGM relative)'=sig_CTnorm,'Treatment/Control (NGM relative)'=sig_CT)
-plot(Venn(sigMet),show = list(Faces = FALSE), doWeights = FALSE,type='ellipses')
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Significant-metabolites.pdf",sep=''),width=6,height=6)
-
-#Positive negative Control and treatment
-sigMetpm<-list('Control: Metabolite/NGM -'=sig_Cm,'Control: Metabolite/NGM +'=sig_Cp,'Treatment: Metabolite/NGM -'=sig_Tm,'Treatment: Metabolite/NGM +'=sig_Tp)
-plot(Venn(sigMetpm),show = list(Faces = FALSE), doWeights = FALSE,type='ellipses')
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Significant-positive|negative-metabolites.pdf",sep=''),width=6,height=6)
+sigMet<-list('Worms > 1'=w1,
+              'Synergistic'=sig_S_MT_FDR,
+              'Antagonistic'=sig_A_MT_FDR)
+plot(Venn(sigMet),show = list(Faces = FALSE), doWeights = FALSE)#
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Biolog_Venn_FDR.pdf",sep=''),width=6,height=6)
 
 
-#Worms>1 CT pos neg
-sigW1CT<-list('Worm growth rescue>1'=w1,'Treatment/Control\n(NGM relative) +'=sig_CTp,'Treatment/Control\n(NGM relative) -'=sig_CTm)#
-plot(Venn(sigW1CT),show = list(Faces = FALSE),doWeights=FALSE,doEuler=TRUE)#,type='ellipses'
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Worms1-CTboth.pdf",sep=''),width=6,height=6)
+#Just sets
+sigMetp<-list('Worms > 1'=w1,
+             'Synergistic'=sig_S_MT_p,
+             'Antagonistic'=sig_A_MT_p)
+plot(Venn(sigMetp),show = list(Faces = FALSE), doWeights = FALSE)#
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Biolog_Venn_pval.pdf",sep=''),width=6,height=6)
 
-
-#Draw simple
-dev.off()
-drawEuler(sig_CTp,
-          w1,
-          sig_CTm,
-          c('Treatment/Control\n(NGM relative) +',
-                               'Worm growth rescue >1',
-                               'Treatment/Control\n(NGM relative) -'))
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Worms1-CTboth_Euler.pdf",sep=''),width=4,height=4)
-dev.off()
-
-
-#Worms>1 CTnorm pos neg
-sigW1CTnorm<-list('Worm growth rescue >1'=w1,
-                  'Treatment/Trend\n(NGM relative) -'=sig_CTnormm,
-                  'Treatment/Trend\n(NGM relative) +'=sig_CTnormp)
-plot(Venn(sigW1CTnorm),show = list(Faces = FALSE), doWeights = FALSE)
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Worms1-CTnormboth.pdf",sep=''),width=6,height=6)
-
-#Draw simple
-dev.off()
-drawEuler(sig_CTnormp,w1,sig_CTnormm,c('Treatment/Trend\n(NGM relative) +',
-                                       'Worm growth rescue >1',
-                                       'Treatment/Trend\n(NGM relative) -'))
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Worms1-CTnormboth_Euler.pdf",sep=''),width=4,height=4)
-dev.off()
-
-
-#Worms>2 CTnorm pos neg
-sigW2CTnorm<-list('Worm growth rescue>2'=w2,
-                  'Treatment/Trend\n(NGM relative) -'=sig_CTnormm,
-                  'Treatment/Trend\n(NGM relative) +'=sig_CTnormp)
-plot(Venn(sigW2CTnorm),show = list(Faces = FALSE), doWeights = FALSE)#,type='ellipses'
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Venn_Worms2-CTnormboth.pdf",sep=''),width=6,height=6)
-
-#Draw simple
-dev.off()
-drawEuler(sig_CTnormp,
-          w2,
-          sig_CTnormm,
-          c('Treatment/Trend\n(NGM relative) +',
-                                       'Worm growth rescue >2',
-                                       'Treatment/Trend\n(NGM relative) -'))
-dev.copy2pdf(device=cairo_pdf,
-             file=paste(odir,"/Bacteria_Venn_Worms2-CTnormboth_Euler.pdf",sep=''),width=4,height=4)
-dev.off()
-
-
-#Make significant hit comparison table
-lists<-list('Control: Metabolite+NGM/NGM'=sig_C,'Control: Metabolite+NGM/NGM positive'=sig_Cp,'Control: Metabolite+NGM/NGM negative'=sig_Cm,
-            'Treatment: Metabolite+NGM/NGM'=sig_T,'Treatment: Metabolite+NGM/NGM positive'=sig_Tp,'Treatment: Metabolite+NGM/NGM negative'=sig_Tm,
-            'Treatment/Control'=sig_CT,'Treatment/Control positive'=sig_CTp,'Treatment/Control negative'=sig_CTm,
-            'Treatment/Trend'=sig_CTnorm,'Treatment/Trend positive'=sig_CTnormp,'Treatment/Trend negative'=sig_CTnormm)
-
-sigcols<-list('Control: Metabolite+NGM/NGM'='NGMDiff_C_pval','Control: Metabolite+NGM/NGM positive'='NGMDiff_C_pval','Control: Metabolite+NGM/NGM negative'='NGMDiff_C_pval',
-              'Treatment: Metabolite+NGM/NGM'='NGMDiff_T_pval','Treatment: Metabolite+NGM/NGM positive'='NGMDiff_T_pval','Treatment: Metabolite+NGM/NGM negative'='NGMDiff_T_pval',
-              'Treatment/Control'='CTDiff_pval','Treatment/Control positive'='CTDiff_pval','Treatment/Control negative'='CTDiff_pval',
-              'Treatment/Trend'='CTDiff_norm_pval','Treatment/Trend positive'='CTDiff_norm_pval','Treatment/Trend negative'='CTDiff_norm_pval')
-
-datacols<-list('Control: Metabolite+NGM/NGM'='NGMDiff_C_Mean','Control: Metabolite+NGM/NGM positive'='NGMDiff_C_Mean','Control: Metabolite+NGM/NGM negative'='NGMDiff_C_Mean',
-               'Treatment: Metabolite+NGM/NGM'='NGMDiff_T_Mean','Treatment: Metabolite+NGM/NGM positive'='NGMDiff_T_Mean','Treatment: Metabolite+NGM/NGM negative'='NGMDiff_T_Mean',
-               'Treatment/Control'='CTDiff_Mean','Treatment/Control positive'='CTDiff_Mean','Treatment/Control negative'='CTDiff_Mean',
-               'Treatment/Trend'='CTDiff_norm_Mean','Treatment/Trend positive'='CTDiff_norm_Mean','Treatment/Trend negative'='CTDiff_norm_Mean')
-
-allsigdf<-data.frame('SigGroup'=NA,'Plate'=NA,'Well'=NA,'UniqueName'=NA,'pvalue'=NA,'SigLabel'=NA)
-for (nm in names(lists)){
-  print(nm)
-  lst<-lists[nm]
-  print(length(lst[[1]]))
-  sigcol<-as.character(sigcols[nm][[1]])
-  sigdat<-as.character(datacols[nm][[1]])
-  if (length(grep("positive",nm))>0){
-    datasel<-allwb[allwb[,sigcol]<0.05,]
-    datasel<-datasel[datasel[,sigdat]>0,]
-  } else if (length(grep("negative",nm))>0) {
-    datasel<-allwb[allwb[,sigcol]<0.05,]
-    datasel<-datasel[datasel[,sigdat]<0,]
-  } else {
-    datasel<-allwb[allwb[,sigcol]<0.05,]
-  }
-  
-  print(dim(datasel))
-  datasel$SigGroup<-nm
-  print(as.character(sigcols[nm][[1]]))
-  
-  datasel[,'pvalue']<-datasel[,sigcol]
-  datasel$SigLabel<-ifelse(stars.pval(datasel$pvalue)!=' ',stars.pval(datasel$pvalue),'')
-  allsigdf<-merge(allsigdf,datasel[,c('SigGroup','Plate','Well','UniqueName','pvalue','SigLabel')],all.x=TRUE,all.y=TRUE)
-}
-
-allsigdf<-subset(allsigdf,Plate!='NA')
-significance<-dcast(allsigdf,Plate+Well+UniqueName~SigGroup,value.var = c('SigLabel'),fill=as.character(''),fun.aggregate = NULL)
-significancecomp<-merge(allwb[,c('Plate','Well','UniqueName','W_Median')],significance,by=c('Plate','Well','UniqueName'),all.x=TRUE)
-
-
-
-
-blexpl<-read.table(paste(ddir,'/Venn_Biolog_column_explanation.csv',sep=''),
-                     sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-
-
-
-
-explrm<-subset(blexpl,Column %in% colnames(significancecomp))
-explrm<-explrm[match(colnames(significancecomp),explrm$Column),]
-
-
-write.csv(significancecomp,paste(ddir,'/Biolog_Significant_hit_comparison.csv',sep=''),row.names = FALSE,na = "")
-
-
-write.xlsx2(explrm, file=paste(ddir,'/Biolog_Significant_hit_comparison.xlsx',sep=''),
-           sheetName="Readme",row.names = FALSE,showNA=FALSE)
-write.xlsx2(significancecomp, file=paste(ddir,'/Biolog_Significant_hit_comparison.xlsx',sep=''),
-           sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
-
-
-
-write.xlsx2(explrm, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 5/final files/table S5.xlsx',
-           sheetName="Biolog_Hits_Readme", append=TRUE,row.names = FALSE,showNA=FALSE)
-write.xlsx2(significancecomp, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 5/final files/table S5.xlsx',
-           sheetName="Biolog_Hits_Data", append=TRUE,row.names = FALSE,showNA=FALSE)
-
-
+# 
+# 
+# #Make significant hit comparison table
+# lists<-list('Control: Metabolite+NGM/NGM'=sig_C,'Control: Metabolite+NGM/NGM positive'=sig_Cp,'Control: Metabolite+NGM/NGM negative'=sig_Cm,
+#             'Treatment: Metabolite+NGM/NGM'=sig_T,'Treatment: Metabolite+NGM/NGM positive'=sig_Tp,'Treatment: Metabolite+NGM/NGM negative'=sig_Tm,
+#             'Treatment/Control'=sig_CT,'Treatment/Control positive'=sig_CTp,'Treatment/Control negative'=sig_CTm,
+#             'Treatment/Trend'=sig_CTnorm,'Treatment/Trend positive'=sig_CTnormp,'Treatment/Trend negative'=sig_CTnormm)
+# 
+# sigcols<-list('Control: Metabolite+NGM/NGM'='NGMDiff_C_pval','Control: Metabolite+NGM/NGM positive'='NGMDiff_C_pval','Control: Metabolite+NGM/NGM negative'='NGMDiff_C_pval',
+#               'Treatment: Metabolite+NGM/NGM'='NGMDiff_T_pval','Treatment: Metabolite+NGM/NGM positive'='NGMDiff_T_pval','Treatment: Metabolite+NGM/NGM negative'='NGMDiff_T_pval',
+#               'Treatment/Control'='CTDiff_pval','Treatment/Control positive'='CTDiff_pval','Treatment/Control negative'='CTDiff_pval',
+#               'Treatment/Trend'='CTDiff_norm_pval','Treatment/Trend positive'='CTDiff_norm_pval','Treatment/Trend negative'='CTDiff_norm_pval')
+# 
+# datacols<-list('Control: Metabolite+NGM/NGM'='NGMDiff_C_Mean','Control: Metabolite+NGM/NGM positive'='NGMDiff_C_Mean','Control: Metabolite+NGM/NGM negative'='NGMDiff_C_Mean',
+#                'Treatment: Metabolite+NGM/NGM'='NGMDiff_T_Mean','Treatment: Metabolite+NGM/NGM positive'='NGMDiff_T_Mean','Treatment: Metabolite+NGM/NGM negative'='NGMDiff_T_Mean',
+#                'Treatment/Control'='CTDiff_Mean','Treatment/Control positive'='CTDiff_Mean','Treatment/Control negative'='CTDiff_Mean',
+#                'Treatment/Trend'='CTDiff_norm_Mean','Treatment/Trend positive'='CTDiff_norm_Mean','Treatment/Trend negative'='CTDiff_norm_Mean')
+# 
+# allsigdf<-data.frame('SigGroup'=NA,'Plate'=NA,'Well'=NA,'UniqueName'=NA,'pvalue'=NA,'SigLabel'=NA)
+# for (nm in names(lists)){
+#   print(nm)
+#   lst<-lists[nm]
+#   print(length(lst[[1]]))
+#   sigcol<-as.character(sigcols[nm][[1]])
+#   sigdat<-as.character(datacols[nm][[1]])
+#   if (length(grep("positive",nm))>0){
+#     datasel<-allwb[allwb[,sigcol]<0.05,]
+#     datasel<-datasel[datasel[,sigdat]>0,]
+#   } else if (length(grep("negative",nm))>0) {
+#     datasel<-allwb[allwb[,sigcol]<0.05,]
+#     datasel<-datasel[datasel[,sigdat]<0,]
+#   } else {
+#     datasel<-allwb[allwb[,sigcol]<0.05,]
+#   }
+#   
+#   print(dim(datasel))
+#   datasel$SigGroup<-nm
+#   print(as.character(sigcols[nm][[1]]))
+#   
+#   datasel[,'pvalue']<-datasel[,sigcol]
+#   datasel$SigLabel<-ifelse(stars.pval(datasel$pvalue)!=' ',stars.pval(datasel$pvalue),'')
+#   allsigdf<-merge(allsigdf,datasel[,c('SigGroup','Plate','Well','UniqueName','pvalue','SigLabel')],all.x=TRUE,all.y=TRUE)
+# }
+# 
+# allsigdf<-subset(allsigdf,Plate!='NA')
+# significance<-dcast(allsigdf,Plate+Well+UniqueName~SigGroup,value.var = c('SigLabel'),fill=as.character(''),fun.aggregate = NULL)
+# significancecomp<-merge(allwb[,c('Plate','Well','UniqueName','W_Median')],significance,by=c('Plate','Well','UniqueName'),all.x=TRUE)
+# 
+# 
+# 
+# 
+# blexpl<-read.table(paste(ddir,'/Venn_Biolog_column_explanation.csv',sep=''),
+#                      sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+# 
+# 
+# 
+# 
+# explrm<-subset(blexpl,Column %in% colnames(significancecomp))
+# explrm<-explrm[match(colnames(significancecomp),explrm$Column),]
+# 
+# 
+# write.csv(significancecomp,paste(ddir,'/Biolog_Significant_hit_comparison.csv',sep=''),row.names = FALSE,na = "")
+# 
+# 
+# write.xlsx2(explrm, file=paste(ddir,'/Biolog_Significant_hit_comparison.xlsx',sep=''),
+#            sheetName="Readme",row.names = FALSE,showNA=FALSE)
+# write.xlsx2(significancecomp, file=paste(ddir,'/Biolog_Significant_hit_comparison.xlsx',sep=''),
+#            sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
+# 
+# 
+# 
+# write.xlsx2(explrm, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 5/final files/table S5.xlsx',
+#            sheetName="Biolog_Hits_Readme", append=TRUE,row.names = FALSE,showNA=FALSE)
+# write.xlsx2(significancecomp, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 5/final files/table S5.xlsx',
+#            sheetName="Biolog_Hits_Data", append=TRUE,row.names = FALSE,showNA=FALSE)
+# 
+# 
 

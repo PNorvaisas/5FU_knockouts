@@ -152,7 +152,11 @@ intsa$PlateGroup<-ifelse(intsa$Plate=='PM5','PM5','PM1&PM2A')
 
 #Calculate ODInt stats
 
+
+
 intsr<-subset(intsa,Descriptor %in% c('Int_750nm'))
+
+
 
 
 
@@ -165,7 +169,7 @@ ggplot(back,aes(y=Value,x=Plate,colour=Type))+
   geom_boxplot()+geom_point()+
   ylab('Growth')
 
-fitneg<-lm(Value~Type+Plate+Type:Plate,data=subset(ints,Name=='Negative Control'))
+fitneg<-lm(Value~Plate+Type:Plate,data=subset(ints,Name=='Negative Control'))#Type+Plate+
 summary(fitneg)
 
 
@@ -249,7 +253,7 @@ genres12t=summary(genfit12t)
 
 #plot(genfit12t)
 #influencePlot(genfit12t,	id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
-
+outlierTest(genfit12t)
 ot12<-outlierTest(genfit12t)
 qqPlot(genfit12t, main="QQ Plot")
 
@@ -257,6 +261,7 @@ outlist12<-c(names(ot12$rstudent))
 #Outliers:
 print('Outliers in PM1&PM2A')
 cf12[outlist12,]
+
 
 #Get final fit
 genfit12=lm(w3~w1,data=subset(cf12,!rownames(cf12) %in% outlist12 & !UniqueName %in% c('2-Hydroxy Benzoic Acid','L-Leucine')))
@@ -275,6 +280,7 @@ genres5t=summary(genfit5t)
 #Bonferroni outlier test
 
 ot5<-outlierTest(genfit5t)
+ot5
 qqPlot(genfit5t, main="QQ Plot")
 
 outlist5<-c(names(ot5$rstudent))
@@ -511,6 +517,21 @@ allwb<-allwbr[,c(18,1:2,19:25,3:17,26:33,37,34,38:41,42,35,43:46,47,36,48:50)]
 colnames(allwb)
 
 
+
+
+PM12names<-subset(allwb,PlateGroup=='PM1&PM2A' & Name!='Negative Control')$Name
+PM5names<-subset(allwb,PlateGroup=='PM5'& Name!='Negative Control')$Name
+
+
+intersect(PM12names,PM5names)
+subset(allwb,Name=='Negative Control')
+#Unique metabolites
+length(unique(allwb$Name))-1
+length(subset(allwb,W_Median>1)$Name)
+length(unique(subset(allwb,W_Median>1)$Name))
+
+
+#3 negative controls, 1 positive control, 
 
 bioexpl<-read.table(paste(ddir,'/Biolog_column_explanation.csv',sep=''),
                     sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
