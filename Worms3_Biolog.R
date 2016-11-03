@@ -249,7 +249,7 @@ cf<-merge(cf12,cf5,all=TRUE)
 #Get fit to find outliers
 genfit12t=lm(w3~w1,data=cf12)
 genres12t=summary(genfit12t)
-
+genres12t
 
 #plot(genfit12t)
 #influencePlot(genfit12t,	id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
@@ -274,7 +274,7 @@ a12<-genres12$coefficients[[2]]
 #Get fit to find outliers
 genfit5t=lm(w3~w1,data=cf5)
 genres5t=summary(genfit5t)
-
+genres5t
 #plot(genfit5t)
 #influencePlot(genfit12t,	id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
 #Bonferroni outlier test
@@ -516,7 +516,13 @@ colnames(allwbr)
 allwb<-allwbr[,c(18,1:2,19:25,3:17,26:33,37,34,38:41,42,35,43:46,47,36,48:50)]
 colnames(allwb)
 
+exclude<-c('2-Hydroxy Benzoic Acid','L-Leucine')
+allwb<-subset(allwb,!UniqueName %in% exclude)
 
+subset(allwb,UniqueName %in% exclude)
+
+
+allwbw<-allwb[, -grep("_t.value", colnames(allwb))]
 
 
 PM12names<-subset(allwb,PlateGroup=='PM1&PM2A' & Name!='Negative Control')$Name
@@ -531,25 +537,56 @@ length(subset(allwb,W_Median>1)$Name)
 length(unique(subset(allwb,W_Median>1)$Name))
 
 
+
+
+
+write.csv(allwb,paste(ddir,'/Biolog_Combined_Summary_Statistics.csv',sep=''),row.names = FALSE)
+
+
+
 #3 negative controls, 1 positive control, 
+
+
+
+
+colnames(allwb)
+
+allwbw<-allwb[, -grep("_t.value", colnames(allwb))]
+allwbw<-allwbw[, -grep("C_B", colnames(allwbw))]
+allwbw<-allwbw[, -grep("T_B", colnames(allwbw))]
+colnames(allwbw)
+
+colnames(allwbw)<-gsub('_Mean','',colnames(allwbw))
+colnames(allwbw)<-gsub('logODInt_C','C_logODInt',colnames(allwbw))
+colnames(allwbw)<-gsub('logODInt_T','T_logODInt',colnames(allwbw))
+colnames(allwbw)<-gsub('ODInt_C','C_ODInt',colnames(allwbw))
+colnames(allwbw)<-gsub('ODInt_T','T_ODInt',colnames(allwbw))
+colnames(allwbw)<-gsub('NGMDiff_C','C_NGMDiff',colnames(allwbw))
+colnames(allwbw)<-gsub('NGMDiff_T','T_NGMDiff',colnames(allwbw))
+
+colnames(allwbw)
+
+
+
+
 
 bioexpl<-read.table(paste(ddir,'/Biolog_column_explanation.csv',sep=''),
                     sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 
 
 #Officia file with explanations
-explrd<-subset(bioexpl,Column %in% colnames(allwb))
-explrd<-explrd[match(colnames(allwb),explrd$Column),]
+explrd<-subset(bioexpl,Column %in% colnames(allwbw))
+explrd<-explrd[match(colnames(allwbw),explrd$Column),]
 
-
-write.csv(allwb,paste(ddir,'/Biolog_Combined_Summary_Statistics.csv',sep=''),row.names = FALSE)
 write.xlsx2(explrd, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
-write.xlsx2(allwb, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE)#showNA=FALSE
+write.xlsx2(allwbw, file=paste(ddir,'/Biolog_Combined_Summary_Statistics.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE)#showNA=FALSE
 
 
 #Update manually
-write.xlsx2(explrd, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 5/final files/table S5.xlsx', sheetName="Biolog_Readme", append=TRUE,row.names = FALSE,showNA=FALSE)
-write.xlsx2(allwb, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 5/final files/table S5.xlsx', sheetName="Biolog_Data", append=TRUE,row.names = FALSE)#showNA=FALSE
+write.xlsx2(explrd, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S5.xlsx',
+            sheetName="Biolog_Readme", append=TRUE,row.names = FALSE,showNA=FALSE)
+write.xlsx2(allwbw, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S5.xlsx',
+            sheetName="Biolog_Data", append=TRUE,row.names = FALSE)#showNA=FALSE
 
 
 

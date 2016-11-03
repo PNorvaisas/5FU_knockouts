@@ -83,7 +83,7 @@ devdel$NComment<-'Causes developmental delay'
 
 
 undisrupted<-subset(bacmict,Gene %in% keioundis$Gene)
-undisrupted$NComment<-'Undisrupted gene, possibly essential (Yamamoto2009)'
+undisrupted$NComment<-'Excluded essential gene (Yamamoto2009)'
 
 #Undisrupted and not in data
 unmis<-setdiff(keioundis$Gene,undisrupted$Gene)
@@ -101,9 +101,9 @@ remsetfff<-merge(remsetff,poorgr,all.x=TRUE,all.y=TRUE)
 remsetf<-remsetfff[,!colnames(remsetfff) %in% c('Row','Column','Comment')]
 remsetf<-rename(remsetf,c("NComment"="Comment"))
 
-remset<-remsetf[,c('Gene','Plate','Well','JW_id','ECK','bno',
-                   'LB_22hr','MOPS_24hr','MOPS_48hr',
-                   'C_OD_Mean','C_OD_SD','T_OD_Mean','T_OD_SD','Comment')]
+remset<-remsetf[,c('Gene','Plate','Well',
+                   'JW_id','ECK','bno','EG','GI',
+                   'Comment')]
 
 
 dim(remset)
@@ -130,33 +130,46 @@ poorgrowth
 
 
 
+
+
+bacmic<-bacmic[,setdiff(colnames(bacmic),c('0','1','2.5','5','UniACC'))] #,'EG','GI'
+
+colnames(bacmic)
+
+bacmicw<-bacmic[,c(1:5,8:10,6:7,11:length(colnames(bacmic)))]
+write.csv(bacmicw,paste(ddir,'/MICs_and_bacterial_growth-Complete.csv',sep=''),row.names = FALSE)
+
+
+bacmicw2<-bacmicw[, -grep("_t.value", colnames(bacmicw))]
+bacmicw2<-rename(bacmicw2,c('T_OD_Mean'='T_OD','C_OD_Mean'='C_OD',
+                            'T_logOD_Mean'='T_logOD','C_logOD_Mean'='C_logOD'))
+
+bacmicw2<-bacmicw2[,setdiff(colnames(bacmicw2),c('LB_22hr','MOPS_24hr','MOPS_48hr'))] 
+
+
+colnames(bacmicw2)
+
 micexpl<-read.table(paste(ddir,'/MICs_column_explanation.csv',sep=''),
                     sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 
 
-bacmic<-bacmic[,setdiff(colnames(bacmic),c('0','1','2.5','5','UniACC'))] #,'EG','GI'
-colnames(bacmic)
-bacmicw<-bacmic[,c(1:5,8:10,6:7,11:length(colnames(bacmic)))]
-
-colnames(bacmicw)
-
-explrd<-subset(micexpl,Column %in% colnames(bacmicw))
-explrd<-explrd[match(colnames(bacmicw),explrd$Column),]
+explrd<-subset(micexpl,Column %in% colnames(bacmicw2))
+explrd<-explrd[match(colnames(bacmicw2),explrd$Column),]
 
 
-write.csv(bacmicw,paste(ddir,'/MICs_and_bacterial_growth-Complete.csv',sep=''),row.names = FALSE)
 write.xlsx2(explrd, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
-write.xlsx2(bacmicw, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
+write.xlsx2(bacmicw2, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
-write.xlsx2(explrd, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 2/final files/Table S2.xlsx',
+write.xlsx2(explrd, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
             sheetName="Readme_All-data",row.names = FALSE,showNA=FALSE,append = TRUE)
-write.xlsx2(bacmicw, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 2/final files/Table S2.xlsx',
+write.xlsx2(bacmicw2, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
             sheetName="All-data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
 #Knockouts removed from screen
 
-remsetw<-remset[,! colnames(remset) %in% c('C_OD_Mean','C_OD_SD','T_OD_Mean','T_OD_SD')]
+remsetw<-remset[,! colnames(remset) %in% c('C_OD_Mean','C_OD_SD','T_OD_Mean','T_OD_SD',
+                                           'LB_22hr','MOPS_24hr','MOPS_48hr')]
 
 explrm<-subset(micexpl,Column %in% colnames(remsetw))
 explrm<-explrm[match(colnames(remsetw),explrm$Column),]
@@ -165,9 +178,9 @@ write.xlsx2(explrm, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), she
 write.xlsx2(remsetw, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
-write.xlsx2(explrm, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 2/final files/Table S2.xlsx',
+write.xlsx2(explrm, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
             sheetName="Readme_Removed",row.names = FALSE,showNA=FALSE,append = TRUE)
-write.xlsx2(remsetw, file='/Users/Povilas/Projects/B-D-H paper/figures and data/figure 2/final files/Table S2.xlsx',
+write.xlsx2(remsetw, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
             sheetName="Removed", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 

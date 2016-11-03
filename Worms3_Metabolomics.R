@@ -114,8 +114,9 @@ reorderfun_mean = function(d,w) { reorder(d, w, agglo.FUN = mean) }
 reorderfun_median = function(d,w) { reorder(d, w, agglo.FUN = median) }
 
 gyr <- colorRampPalette(c("gray","yellow", "red"))(n = 32)
-gyrs<-colorRampPalette(c("gray90","steelblue1","blue",'cyan'))(n = 5)
 
+#gyrs<-colorRampPalette(c("gray90","steelblue1","blue",'cyan'))(n = 5)
+gyrs<-colorRampPalette(c("gray90","steelblue1","blue4"))(n = 5)
 
 
 #QEA data
@@ -157,6 +158,9 @@ for (eni in 1:nrow(enrichments)) {
     for (cs in 1:nrow(colsel)) {
       colcode<-colsel[cs,'Abr']
       coltype<-colsel[cs,'Type']
+      if (organism=='C.elegans' && entype=='QEAKegg') {
+        enfl<-'_pathway_results_2.csv'
+      }
       fln<-paste(fl,colcode,enfl,sep='')
       #print(fln)
       #print(colcode)
@@ -446,11 +450,11 @@ allstats<-subset(allstats,!`Metabolite Set` %in% pathexclude)
 allstats<-subset(allstats,!`Metabolite Set` %in% pathexclude2)
 
 
-metabr<-c(" metabolism"=" met."," biosynthesis"=" biosyn."," degradation"=" deg.")
-
-for (i in names(metabr)) {
-  allstats$`Metabolite Set`<-gsub(i,metabr[[i]],allstats$`Metabolite Set`)
-}
+# metabr<-c(" metabolism"=" met."," biosynthesis"=" biosyn."," degradation"=" deg.")
+# 
+# for (i in names(metabr)) {
+#   allstats$`Metabolite Set`<-gsub(i,metabr[[i]],allstats$`Metabolite Set`)
+# }
 
 statsm<-melt(allstats,id.vars = c('Metabolite Set','Total','Hits','Organism','Type'),
              value.name = 'Value',variable.name = 'Measure', na.rm = FALSE)
@@ -468,29 +472,79 @@ cnm<-c("C.elegans_Biolog_Antagonistic_pval_logp",
        "E.coli_Biolog_Antagonistic_pval_logp",
        "E.coli_Biolog_Synergistic_pval_logp",
        "C.elegans_5FU/Control_logp",
-       "C.elegans_Arabinose/Control_logp",
-       "C.elegans_Arabinose+5FU/Control_logp",
-       "E.coli_5FU/Control_logp",
-       "E.coli_Arabinose/Control_logp",
-       "E.coli_Arabinose+5FU/Control_logp")
+       "E.coli_5FU/Control_logp")
 
-cnmp<-c("C.elegans_Biolog_Antagonistic_pval_Raw p",
-       "E.coli_Biolog_Antagonistic_pval_Raw p",
-       "E.coli_Biolog_Synergistic_pval_Raw p",
-       "C.elegans_5FU/Control_Raw p",
-       "C.elegans_Arabinose/Control_Raw p",
-       "C.elegans_Arabinose+5FU/Control_Raw p",
-       "E.coli_5FU/Control_Raw p",
-       "E.coli_Arabinose/Control_Raw p",
-       "E.coli_Arabinose+5FU/Control_Raw p")
+# "C.elegans_Arabinose/Control_logp",
+# "C.elegans_Arabinose+5FU/Control_logp",
+
+# ,
+# "E.coli_Arabinose/Control_logp",
+# "E.coli_Arabinose+5FU/Control_logp"
+
+# cnmp<-c("C.elegans_Biolog_Antagonistic_pval_Raw p",
+#        "E.coli_Biolog_Antagonistic_pval_Raw p",
+#        "E.coli_Biolog_Synergistic_pval_Raw p",
+#        "C.elegans_5FU/Control_Raw p",
+#        "C.elegans_Arabinose/Control_Raw p",
+#        "C.elegans_Arabinose+5FU/Control_Raw p",
+#        "E.coli_5FU/Control_Raw p",
+#        "E.coli_Arabinose/Control_Raw p",
+#        "E.coli_Arabinose+5FU/Control_Raw p")
 
 enbrks<-c(0,-log(0.05,10),2,3,4,5)
 
 hdata<-statsall[!apply(statsall[,cnm], 1, function(x)(all(x< -log(0.05,10),na.rm=TRUE))),]
 #tabledata<-statsallp[!apply(statsallp[,cnmp], 1, function(x)(all(x< -0.05,na.rm=TRUE))),]
-fulltabledata<-statsallp[,c('Metabolite Set',cnmp)]
 
-write.csv(fulltabledata,paste(ddir,'/Metabolomics_Enrichment_table.csv',sep=''),row.names = FALSE)
+allstatsw<-subset(allstats,Type %in% c('Biolog_Antagonistic_pval',
+                                        'Biolog_Synergistic_pval',
+                                        '5FU/Control'))
+
+# ,
+# 'Arabinose/Control',
+# 'Arabinose+5FU/Control'
+
+
+head(allstatsw)
+allstatsw<-rename(allstatsw,c('Type'='Comparison'))
+allstatsw$Comparison<-revalue(allstatsw$Comparison, c("Biolog_Antagonistic_pval"="Biolog_Antagonistic/All",
+                                                      "Biolog_Synergistic_pval"="Biolog_Synergistic/All"))
+
+allstatsw$`-log(p)`<-allstatsw$logp
+allstatsw<-allstatsw[,c('Metabolite Set','Organism','Comparison',
+                        'Total','Hits','Raw p','-log(p)','FDR')] #,'Impact'
+
+write.csv(allstatsw,paste(ddir,'/Metabolomics_Enrichment.csv',sep=''),row.names = FALSE)
+
+
+Metexpl<-read.table(paste(ddir,'/Metabolomics_enrichment_explanation.csv',sep=''),
+                    sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+
+
+
+explen<-subset(Metexpl,Column %in% colnames(allstatsw))
+
+explen<-explen[match(colnames(allstatsw),explen$Column),]
+
+
+
+write.xlsx2(explen, file=paste(ddir,'/Metabolomics_Enrichment.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
+write.xlsx2(allstatsw, file=paste(ddir,'/Metabolomics_Enrichment.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE)#showNA=FALSE
+
+
+# #Update manually
+# write.xlsx2(explen, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S5.xlsx',
+#            sheetName="Readme_Metabolomics_Enrichment",row.names = FALSE,showNA=FALSE,append=TRUE)
+# write.xlsx2(allstatsw, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S5.xlsx',
+#            sheetName="Metabolomics_Enrichment", append=TRUE,row.names = FALSE)#showNA=FALSE
+
+
+
+#Update manually
+write.xlsx2(explen, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/without worm b6/tables/Scott et al_Table S5_noAra.xlsx',
+           sheetName="Metabolomics_Enrichment_Readme",row.names = FALSE,showNA=FALSE,append=TRUE)
+write.xlsx2(allstatsw, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/without worm b6/tables/Scott et al_Table S5_noAra.xlsx',
+           sheetName="Metabolomics_Enrichment", append=TRUE,row.names = FALSE)#showNA=FALSE
 
 
 
@@ -524,8 +578,8 @@ hmapr<-heatmap.2(as.matrix(hdata),key=TRUE,Colv=FALSE,trace='none',labRow=rnm,
                  reorderfun=reorderfun_mean,
                  breaks=enbrks)
 #dev.off()
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Metabolomics_Biolog-Metabolomics_heatmap.pdf',sep = ''),
-             width=8,height=17)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Metabolomics_Enrichment_Biolog-Metabolomics_heatmap_new.pdf',sep = ''),
+             width=6,height=17)
 
 
 
@@ -567,6 +621,7 @@ bacm$Organism<-'E.coli'
 wormm$Organism<-'C.elegans'
 
 mets<-merge(bacm,wormm,all.x = TRUE,all.y=TRUE)
+
 mets$Organism<-factor(mets$Organism,levels=c('E.coli','C.elegans'))
 mets$Metabolite<-as.factor(mets$Metabolite)
 mets$`5-FU`<-as.factor(mets$`5-FU`)
@@ -575,6 +630,65 @@ mets$Conc<-as.numeric(mets$Conc)
 mets$logConc<-log(mets$Conc,2)
 
 write.csv(mets,paste(ddir,'/Metabolomics_Clean_Data.csv',sep=''),row.names = FALSE)
+
+
+
+#Raw heatmaps
+
+allstat<-dcast(subset(mets,Organism=='E.coli' & `L-Arabinose`=='0mM'),Metabolite~ID,mean,value.var = c('logConc'),fill = as.numeric(NA),drop=TRUE)
+
+
+
+allstats<-allstat[order(allstat$Metabolite),]
+Names<-allstats[,'Metabolite']
+
+#Draw heatmap
+
+
+nstep<-28
+
+bgg <- colorRampPalette(c("blue", "gray90", "red"))(n = nstep)
+
+colscale<-bgg#c(cs,bgg)
+
+brks<-seq(-5,5,by=7/nstep)
+#brks<-c(-6,brkst)
+
+
+# selcol<-c('BW_1','BW_2','BW_3','BW_4',
+#           'BW_5','BW_6','BW_7','BW_8',
+#           'ndk_1','ndk_2','ndk_3','ndk_4',
+#           'pyrE_1','pyrE_2','pyrE_4',
+#           'yjjG_1','yjjG_2','yjjG_3','yjjG_4')
+
+selcol<-setdiff(colnames(allstats),'Metabolite')
+cleannames<-selcol
+
+statsh<-allstats[,selcol]
+
+reorderfun_mean = function(d,w) { reorder(d, w, agglo.FUN = mean) }
+reorderfun_median = function(d,w) { reorder(d, w, agglo.FUN = median) }
+
+statsfill<-statsh
+statsfill[is.na(statsfill)]<-0
+
+
+statshf<-statsh[,selcol]
+statsfill<-statshf
+statsfill[is.na(statsfill)]<-0
+
+
+
+hmap<-heatmap.2(as.matrix(statshf),key=TRUE,Colv=TRUE,trace='none',labRow=Names,
+                labCol=cleannames,col=bgg,
+                xlab='Comparison',Rowv=TRUE,
+                dendrogram="both",scale="row",na.color="white",
+                cexRow=1,cexCol=1,margin=c(8,16),
+                lwid=c(0.2,0.8),symkey=TRUE)
+
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Metabolomics_Heatmap.pdf',sep = ''),
+             width=12,height=15)
+
 
 
 
@@ -607,6 +721,8 @@ celegansmiss<-as.character(unique(subset(metsg,is.na(C.elegans) & !is.na(E.coli)
 metslm$Group<-paste(metslm$Organism,'_5-FU:',metslm$`5-FU`,'_L-Arabinose:',metslm$`L-Arabinose`,sep='')
 
 metslms<-subset(metslm,!(Replicate==2 & Organism=='E.coli' & `5-FU`=='1uM' & `L-Arabinose`=='10mM'))
+
+metslms<-subset(metslm, `L-Arabinose`!='10mM')
 metsfilt<-metslms[,!colnames(metslms) %in% c(ecolimiss,celegansmiss)]
 
 pca.group<-metsfilt$Group
@@ -626,12 +742,21 @@ generalpca <- ggbiplot(ir.pca, obs.scale = 1,
                        var.axes = 0)+
   scale_color_discrete(name = '')+
   ylim(-10,10)+
+  xlim(-10,10)+
   theme(legend.direction = 'vertical',legend.position = 'right')
 generalpca
 
 dev.copy2pdf(device=cairo_pdf,
-             file=paste(odir,"/Metabolomics_PCA.pdf",sep=''),
+             file=paste(odir,"/Metabolomics_PCA_NoAra.pdf",sep=''),
              width=12,height=9)
+
+
+generalpca+guides(colour=FALSE)+
+  theme(panel.grid.minor = element_blank(),panel.grid.major = element_blank())
+
+dev.copy2pdf(device=cairo_pdf,
+             file=paste(odir,"/Metabolomics_PCA_NoAra_clean.pdf",sep=''),
+             width=3,height=2.5)
 
 #C.elegans
 metslms<-subset(metslm,Organism=='C.elegans')
@@ -824,7 +949,7 @@ allcompfull<-merge(allcomp,comptb,all=TRUE)
 
 allcompfull$Metabolite<-gsub('Response ','',allcompfull$.id)
 allcompfull$.id<-NULL
-allcompfull<-rename(allcompfull,c("Pr...t.."='p.value',"Std..Error"='SD','Estimate'='Difference'))
+allcompfull<-rename(allcompfull,c("Pr...t.."='p.value',"Std..Error"='SE','Estimate'='Difference'))
 
 
 compchange<-c("`5-FU`1uM"="5FU vs Control",
@@ -834,9 +959,119 @@ compchange<-c("`5-FU`1uM"="5FU vs Control",
               "OrganismC.elegans"="C.elegans vs E.coli")
 allcompfull$Comparisons<-revalue(allcompfull$Comparisons,compchange)
 
+
 allcompfull$FDR<-p.adjust(allcompfull$p.value,method = 'fdr')
 
 
+allcompfull$FoldChange<-ifelse(allcompfull$Difference>0,2^allcompfull$Difference,-(2^(-allcompfull$Difference)))
+
+
+
+comparisons<-c('5FU vs Control',
+               'L-Arabinose vs Control',
+               '5FU & L-Arabinose vs Control')
+
+organisms<-c('C.elegans','E.coli')
+
+
+allcompclean<-subset(allcompfull,Type!='Interorganism' & 
+                       Comparisons %in% c("5FU vs Control"))
+
+# ,
+# "L-Arabinose vs Control",
+# "5FU & L-Arabinose vs Control"
+
+#Do FDR adjustments in each group separately
+for (cm in comparisons) {
+  for (org in organisms) {
+    allcompclean[allcompclean$Comparisons==cm & allcompclean$Type==org,'FDR']<-p.adjust(allcompclean[allcompclean$Comparisons==cm & allcompclean$Type==org,]$p.value,method = 'fdr')
+  }
+}
+
+
+colnames(allcompclean)
+
+write.csv(allcompclean,paste(ddir,'/Metabolomics_Statistics_noAra.csv',sep=''),row.names = FALSE)
+
+
+allcompcleanw<-rename(allcompclean,c('Difference'='logFC','Type'='Organism','Comparisons'='Comparison'))
+
+allcompcleanw<-allcompcleanw[,c('Comparison','Organism','Metabolite','FoldChange','logFC','SE','t.value','p.value','FDR')]
+
+colnames(allcompcleanw)
+
+Metsexpl<-read.table(paste(ddir,'/Metabolomics_statistics_explanation.csv',sep=''),
+                    sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+
+explst<-subset(Metsexpl,Column %in% colnames(allcompcleanw))
+
+explst<-explst[match(colnames(allcompcleanw),explst$Column),]
+
+
+write.xlsx2(explst, file=paste(ddir,'/Metabolomics_Statistics_noAra.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
+write.xlsx2(allcompcleanw, file=paste(ddir,'/Metabolomics_Statistics_noAra.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE)#showNA=FALSE
+
+
+# #Update manually
+# write.xlsx2(explst, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S5.xlsx',
+#             sheetName="Metabolomics_Statistics_Readme",row.names = FALSE,showNA=FALSE,append=TRUE)
+# write.xlsx2(allcompcleanw, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S5.xlsx',
+#             sheetName="Metabolomics_Statistics", append=TRUE,row.names = FALSE)#showNA=FALSE
+# # 
+
+
+#Update manually
+write.xlsx2(explst, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/without worm b6/tables/Scott et al_Table S5_noAra.xlsx',
+            sheetName="Metabolomics_Statistics_Readme",row.names = FALSE,showNA=FALSE,append=TRUE)
+write.xlsx2(allcompcleanw, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/without worm b6/tables/Scott et al_Table S5_noAra.xlsx',
+            sheetName="Metabolomics_Statistics", append=TRUE,row.names = FALSE)#showNA=FALSE
+# 
+
+
+
+  
+  
+txtsize<-3#5
+nudgex<-0.1
+nudgey<-0.2
+erralpha<-1
+errcolor<-'grey80'
+baralpha<-0.2
+barcolor<-'red'
+
+
+straincols<-c('red','darkgreen','#89CFF0')
+
+
+
+Nucp<-ggplot(subset(allcompcleanw,Comparison=='5FU vs Control'),aes(x=logFC,y=-log(p.value,10),color=Organism))+
+  geom_hline(yintercept = -log(0.05,10),color=barcolor,alpha=baralpha)+
+  geom_vline(xintercept = -1,color=barcolor,alpha=baralpha)+
+  geom_vline(xintercept = 1,color=barcolor,alpha=baralpha)+
+  labs(color='Organism')+
+  xlab('logFC')+
+  xlim(-3,3)+
+  scale_color_manual(values=straincols)+
+  #scale_y_continuous(breaks=seq(0,10,by=2),limits=c(0,10.5))+
+  theme(panel.grid.minor = element_blank())
+Nucp+geom_errorbarh(aes(xmin=logFC-SE,xmax=logFC+SE),color=errcolor)+
+  geom_point(size=3)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Volcano_Significant_p.value_clean.pdf',sep = ''),
+             width=9,height=5)
+Nucp+geom_text(aes(label=ifelse(-log(p.value,10)>4,as.character(Metabolite),'')),
+               nudge_x=nudgex,nudge_y=nudgey,size=txtsize)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Volcano_Significant_p.value_clean_text.pdf',sep = ''),
+             width=9,height=5)
+
+
+Nucp+geom_errorbarh(aes(xmin=logFC-SE,xmax=logFC+SE),color=errcolor)+
+  geom_point(size=3)+
+  geom_text(aes(label=ifelse(-log(p.value,10)>4 | abs(logFC)>1,as.character(Metabolite),'')),
+            nudge_x=nudgex,nudge_y=nudgey,size=txtsize)
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Volcano_Significant_p.value_Full.pdf',sep = ''),
+             width=9,height=5)
+
+  
 
 
 #Data for comparison
@@ -875,23 +1110,17 @@ allcompfull$FDR<-p.adjust(allcompfull$p.value,method = 'fdr')
 #   geom_point()
 
 
+# "C.elegans_L-Arabinose vs Control",
+# "C.elegans_5FU & L-Arabinose vs Control",
+# "E.coli_L-Arabinose vs Control",
+# "E.coli_5FU & L-Arabinose vs Control"
+
 selcol<-c("C.elegans_5FU vs Control",
-          "C.elegans_L-Arabinose vs Control",
-          "C.elegans_5FU & L-Arabinose vs Control",
-          "E.coli_5FU vs Control",
-          "E.coli_L-Arabinose vs Control",
-          "E.coli_5FU & L-Arabinose vs Control")
-
-
+          "E.coli_5FU vs Control")
 
 cleannames<-gsub('_',' ',selcol)
 
-allcompclean<-subset(allcompfull,Type!='Interorganism' & 
-                       Comparisons %in% c("5FU vs Control",
-                                          "L-Arabinose vs Control",
-                                          "5FU & L-Arabinose vs Control"))
-
-allcompclean$FDR<-p.adjust(allcompclean$p.value,method = 'fdr')
+#allcompclean$FDR<-p.adjust(allcompclean$p.value,method = 'fdr')
 
 
 allstat<-dcast(allcompclean,Metabolite~Type+Comparisons,value.var = 'Difference',drop=FALSE,fill=as.numeric(NA))
@@ -905,7 +1134,7 @@ allstat.fdr<-dcast(allcompclean,Metabolite~Type+Comparisons,value.var = 'FDR',dr
 nstep<-14
 
 bgg <- colorRampPalette(c("blue", "gray90", "red"))(n = nstep)
-cs<-colorRampPalette(c("cornsilk"))(n = 1)
+cs<-colorRampPalette(c("white"))(n = 1)
 
 colscale<-c(cs,bgg)
 
@@ -944,7 +1173,9 @@ statsh<-allstat
 statsh.p<-allstat.pval
 statsh.fdr<-allstat.fdr
 
-remrows<-apply(statsh.p[,selcol], 1, function(x)(all(x> 0.05,na.rm=TRUE)))
+remrows<-apply(statsh.p[,selcol], 1, function(x)(all(x>0.05,na.rm=TRUE)))
+#remrows<-c()
+
 
 Names<-statsh[!remrows,'Metabolite']
 
@@ -962,6 +1193,7 @@ statsh.fc<-statshf
 statsh.pc[statsh.pf>=0.05]<- -5
 statsh.fc[statsh.fdrf>=0.05]<- -5
 
+nacolor<-'burlywood3'
 
 
 
@@ -969,7 +1201,7 @@ statsh.fc[statsh.fdrf>=0.05]<- -5
 hmap<-heatmap.2(as.matrix(statsfill),key=TRUE,Colv=FALSE,trace='none',labRow=Names,
           labCol=cleannames,col=bgg,
           xlab='Comparison',Rowv=TRUE,
-          dendrogram="row",scale="none",na.color="plum",
+          dendrogram="row",scale="none",na.color=nacolor,
           cexRow=0.4,cexCol=1,margin=c(8,16),
           lwid=c(0.2,0.8),symkey=TRUE,
           reorderfun=reorderfun_mean)
@@ -981,33 +1213,33 @@ hmap<-heatmap.2(as.matrix(statsfill),key=TRUE,Colv=FALSE,trace='none',labRow=Nam
 heatmap.2(as.matrix(statshf),key=TRUE,Colv=FALSE,trace='none',labRow=Names,
           labCol=cleannames,col=bgg,
           xlab='Comparison',Rowv=hmap$rowDendrogram,
-          dendrogram='row',scale="none",na.color="white",
-          cexRow=0.4,cexCol=0.4,margin=c(16,16),
+          dendrogram='row',scale="none",na.color=nacolor,
+          cexRow=1,cexCol=1,margin=c(16,16),
           lwid=c(0.2,0.8),symkey=FALSE,
           reorderfun=reorderfun_mean,breaks=brkst)
 
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Metabolomics_Stats_All_clean.pdf',sep = ''),
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Metabolomics_Stats_All_clean_new.pdf',sep = ''),
              width=6,height=15)
 
 heatmap.2(as.matrix(statsh.pc),key=TRUE,Colv=FALSE,trace='none',labRow=Names,
           labCol=cleannames,col=colscale,
           xlab='Comparison',Rowv=hmap$rowDendrogram,
-          dendrogram='row',scale="none",na.color="white",
-          cexRow=0.4,cexCol=0.4,margin=c(16,16),
+          dendrogram='row',scale="none",na.color=nacolor,
+          cexRow=1,cexCol=1,margin=c(16,16),
           lwid=c(0.2,0.8),symkey=FALSE,
           reorderfun=reorderfun_mean,breaks=brks)
 
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Metabolomics_Stats_Significant_p_clean.pdf',sep = ''),
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Metabolomics_Stats_Significant_p_clean_new.pdf',sep = ''),
              width=6,height=15)
 
 heatmap.2(as.matrix(statsh.fc),key=TRUE,Colv=FALSE,trace='none',labRow=Names,
           labCol=cleannames,col=colscale,
           xlab='Comparison',Rowv=hmap$rowDendrogram,
-          dendrogram='row',scale="none",na.color="white",
-          cexRow=0.4,cexCol=0.4,margin=c(16,16),
+          dendrogram='row',scale="none",na.color=nacolor,
+          cexRow=1,cexCol=1,margin=c(16,16),
           lwid=c(0.2,0.8),symkey=FALSE,
           reorderfun=reorderfun_mean,breaks=brks)
 
-dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Metabolomics_Stats_Significant_FDR_clean.pdf',sep = ''),
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,'/Metabolomics_Stats_Significant_FDR_clean_new.pdf',sep = ''),
              width=6,height=15)
 

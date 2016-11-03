@@ -170,3 +170,40 @@ for row in sheet:
 
 writecsv(datacollect,'Biolog_Worm_linearised_control.csv',delim=',')
 
+
+os.chdir('/Users/Povilas/Projects/2015-Metformin/Worms/Keio_NGM_full_screen/Rep1')
+
+ifiles=glob.glob('*.xlsx')
+
+output=[]
+ohead=['Plate','Well','Replicate','OD']
+#'Time'
+output.append(ohead)
+
+for ifile in ifiles:
+	ipat, iname, itype = filename(ifile)
+	inms=iname.split()
+	plate=inms[3].replace('Plate','')
+	rep=1
+	#time=inms[3]
+	sheet=readxls(ifile)
+	print plate,rep#,time
+	data=sheet[5:13]
+	#print len(data)
+	print 'A1:{}, A12:{}'.format(data[0][0], data[0][11])
+	print 'H1:{}, H12:{}'.format(data[7][0], data[7][11])
+	data=[ [numerize(val) for val in ln if val!=''] for ln in data]# if val!=''
+	#print plate,rep,drug
+
+	for r,ln in IT.izip(['A','B','C','D','E','F','G','H'],data):
+		for c,val in enumerate(ln):
+			well='{}{}'.format(r,c+1)
+			output.append([plate,well,rep,val])
+
+
+
+writecsv(output,'NGM_Keio_Rep1.csv',delim=',')
+
+
+
+

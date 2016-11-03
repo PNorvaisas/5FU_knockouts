@@ -99,10 +99,30 @@ length(subset(bacmic,MIC>5 & Gene!='WT')$Gene)
 574/3813
 
 
+
+#B6 scheme
+
+B6dat<-read.table('~/Projects/B-D-H paper/Povilas/B6_genes.csv',sep=',',header=TRUE)
+
+B6val<-merge(B6dat,bacmic[,c('Gene','MIC')],by='Gene',all.x=TRUE)
+
+B6dir<-'~/Projects/B-D-H paper/Povilas/'
+
+#,guide='legend'
+brks<-c(1,2.5,5,10,25,50,100)
+gradcols<-c('black','yellow','red')
+B6<-ggplot(B6val,aes(x=X,y=Y,color=MIC))+
+  geom_text(aes(label=Text))+
+  scale_colour_gradientn(colours = gradcols,trans = "log",
+                         breaks=brks,limits=c(1,100),na.value = "purple")
+B6
+dev.copy2pdf(device=cairo_pdf,file=paste(B6dir,"/B6_coloured.pdf",sep = ''),
+             width=6.5,height=4)
+
 #Explanation
 bacgrow<-read.table(paste(ddir,'/Bacterial_growth.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)
 
-explgrow<-subset(bacgrow,Gene %in% c('WT','upp','gcvA'))
+explgrow<-subset(bacgrow,Gene %in% c('WT','upp','gcvA','paaF'))
 ggplot(explgrow,aes(x=Gene,y=C_logOD))+geom_point()
 
 egrowm<-melt(explgrow,id.vars=c('Gene'),
@@ -114,8 +134,8 @@ egrowm$Index<-paste(egrowm$Gene,egrowm$Measurement,sep='_')
 egrowmc<-subset(egrowm,Measurement %in% c('C_logOD','T_logOD'))
 
 egrowmc$Index<-factor(egrowmc$Index,
-                      levels=c('WT_C_logOD','WT_T_logOD','upp_C_logOD','upp_T_logOD','gcvA_C_logOD','gcvA_T_logOD'),
-                      labels=c('WT_C_logOD','WT_T_logOD','upp_C_logOD','upp_T_logOD','gcvA_C_logOD','gcvA_T_logOD'))
+                      levels=c('WT_C_logOD','WT_T_logOD','upp_C_logOD','upp_T_logOD','paaF_C_logOD','paaF_T_logOD','gcvA_C_logOD','gcvA_T_logOD'),
+                      labels=c('WT_C_logOD','WT_T_logOD','upp_C_logOD','upp_T_logOD','paaF_C_logOD','paaF_T_logOD','gcvA_C_logOD','gcvA_T_logOD'))
 
 WTC<-bacmic[bacmic$Gene=='WT','C_logOD_Mean']
 WTT<-bacmic[bacmic$Gene=='WT','T_logOD_Mean']
@@ -123,40 +143,50 @@ uppC<-bacmic[bacmic$Gene=='upp','C_logOD_Mean']
 uppT<-bacmic[bacmic$Gene=='upp','T_logOD_Mean']
 gcvAC<-bacmic[bacmic$Gene=='gcvA','C_logOD_Mean']
 gcvAT<-bacmic[bacmic$Gene=='gcvA','T_logOD_Mean']
+paaFC<-bacmic[bacmic$Gene=='paaF','C_logOD_Mean']
+paaFT<-bacmic[bacmic$Gene=='paaF','T_logOD_Mean']
+
+KOefcol<-'gray50'
 
 ggplot(egrowmc,aes(x=Index,y=Growth))+
   geom_point(aes(color=Measurement))+
-  geom_hline(yintercept=WTC,color='yellow')+
+  geom_hline(yintercept=WTC,color=KOefcol)+
   #geom_hline(yintercept=WTT,color='purple')+
-  geom_segment(aes(x = 'WT_T_logOD', y = WTC, xend = 'WT_T_logOD', yend = WTT,
-                   color='5-FU Treatment'),
+  geom_segment(aes(x = 'WT_T_logOD', y = WTC, xend = 'WT_T_logOD', yend = WTT),
              color='purple',arrow = arrow(length = unit(0.03, "npc")))+
-  geom_segment(aes(x = 'gcvA_C_logOD', y = gcvAC, xend = 'gcvA_C_logOD', yend = gcvAC+(WTT-WTC),
-                   color='5-FU Treatment'),
+  geom_segment(aes(x = 'gcvA_C_logOD', y = gcvAC, xend = 'gcvA_C_logOD', yend = gcvAC+(WTT-WTC)),
                color='purple',arrow = arrow(length = unit(0.03, "npc")))+
-  geom_segment(aes(x = 'upp_C_logOD', y = uppC, xend = 'upp_C_logOD', yend =uppC+(WTT-WTC),
-                   color='5-FU Treatment'),
+  geom_segment(aes(x = 'upp_C_logOD', y = uppC, xend = 'upp_C_logOD', yend =uppC+(WTT-WTC)),
+               color='purple',arrow = arrow(length = unit(0.03, "npc")))+
+  geom_segment(aes(x = 'paaF_C_logOD', y = paaFC, xend = 'paaF_C_logOD', yend =paaFC+(WTT-WTC)),
                color='purple',arrow = arrow(length = unit(0.03, "npc")))+
   
-  geom_segment(aes(x = 'upp_C_logOD', y = WTC, xend = 'upp_C_logOD', yend = uppC,
-                   color='Control'),
-               color='yellow',arrow = arrow(length = unit(0.03, "npc")))+
-  geom_segment(aes(x ='gcvA_C_logOD', y = WTC, xend = 'gcvA_C_logOD', yend = gcvAC,
-                   color='Control'),
-               color='yellow',arrow = arrow(length = unit(0.03, "npc")))+
+  geom_segment(aes(x = 'upp_C_logOD', y = WTC, xend = 'upp_C_logOD', yend = uppC),
+               color=KOefcol,arrow = arrow(length = unit(0.03, "npc")))+
+  geom_segment(aes(x ='gcvA_C_logOD', y = WTC, xend = 'gcvA_C_logOD', yend = gcvAC),
+               color=KOefcol,arrow = arrow(length = unit(0.03, "npc")))+
+  geom_segment(aes(x ='paaF_C_logOD', y = WTC, xend = 'paaF_C_logOD', yend = paaFC),
+               color=KOefcol,arrow = arrow(length = unit(0.03, "npc")))+
   
-  geom_segment(aes(x = 'upp_T_logOD', y = WTT+(uppC-WTC), xend = 'upp_T_logOD', yend = uppT,
-                   color='Interaction - antagonistic'),
+  geom_segment(aes(x = 'upp_T_logOD', y = WTT+(uppC-WTC), xend = 'upp_T_logOD', yend = uppT),
                color='green',arrow = arrow(length = unit(0.03, "npc")))+
-  geom_segment(aes(x ='gcvA_T_logOD', y = WTT+(gcvAC-WTC), xend = 'gcvA_T_logOD', yend = gcvAT,
-                   color='Interaction - synergistic'),
+  geom_segment(aes(x ='gcvA_T_logOD', y = WTT+(gcvAC-WTC), xend = 'gcvA_T_logOD', yend = gcvAT),
                color='blue',arrow = arrow(length = unit(0.03, "npc")))+
+#   geom_segment(aes(x ='paaF_T_logOD', y = WTT+(paaFC-WTC), xend = 'paaF_T_logOD', yend = paaFT),
+#                color='green',arrow = arrow(length = unit(0.03, "npc")))+
   
   geom_segment(aes(x = 'gcvA_C_logOD', y =gcvAC+(WTT-WTC), xend = 'gcvA_T_logOD', yend =gcvAC+(WTT-WTC)),
-               color='purple',arrow = arrow(length = unit(0.03, "npc")))+
+               color='gray')+
   geom_segment(aes(x = 'upp_C_logOD', y = uppC+(WTT-WTC), xend = 'upp_T_logOD', yend =uppC+(WTT-WTC)),
-               color='purple',arrow = arrow(length = unit(0.03, "npc")))+
-  ylab('logOD')
+               color='gray')+
+  geom_segment(aes(x = 'paaF_C_logOD', y = paaFC+(WTT-WTC), xend = 'paaF_T_logOD', yend =paaFC+(WTT-WTC)),
+               color='gray')+
+  ylab('log2(OD)_600nm')+
+  xlab('Knockout')+
+  labs(colour='Measurement')+
+  theme(panel.grid.minor = element_blank())
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Knockout_5-FU_Interaction_explanation.pdf",sep = ''),
+             width=6.5,height=4)
 
 
 ggplot(egrowmc,aes(x=Gene,y=Growth))+
@@ -192,10 +222,33 @@ ggplot(egrowmc,aes(x=Gene,y=Growth))+
   geom_segment(aes(x = 'upp', y = uppC+(WTT-WTC), xend = 'upp', yend =uppC+(WTT-WTC)),
                color='purple',arrow = arrow(length = unit(0.03, "npc")))+
   ylab('logOD')
+
 #
 
+#WT growth reduction percentage
+WTdata<-subset(bacmic,Gene=='WT')
+ldcAdata<-subset(bacmic,Gene=='ldcA')
+
+1-WTdata$T_OD_Mean/WTdata$C_OD_Mean
+
+WTdata$T_OD_Mean
+WTdata$C_OD_Mean
+
+ldcAdata$T_OD_Mean
+ldcAdata$C_OD_Mean
+
+1-ldcAdata$T_OD_Mean/ldcAdata$C_OD_Mean
+
+2^(ldcAdata$C_WTDiff)
+
+subset(bacmic,GT_Interaction<0.001 & GT_Interaction>-0.001 )
+
+
+
 fitbac<-lm(T_OD_Mean ~ C_OD_Mean,data=bacmic)
-summary(fitbac)
+resbac<-summary(fitbac)
+resbac
+resbac$r.squared
 
 
 erralpha<-1
@@ -229,6 +282,73 @@ baccor
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Control-Treatment_NGM_growth.pdf",sep = ''),
              width=6.5,height=5)
 
+pntcolor='grey20'
+
+baccleancor<-ggplot(bacmic,aes(x=C_OD_Mean,y=T_OD_Mean))+
+  geom_abline(intercept=fitbac$coefficients[[1]],slope=fitbac$coefficients[[2]],alpha=0.5,color='red')+
+  geom_abline(intercept=0,slope=1,alpha=0.1,aes(color='grey'),linetype='longdash',size=0.5)+
+  geom_errorbarh(aes(xmax=C_OD_Mean+C_OD_SD,xmin=C_OD_Mean-C_OD_SD),height=0,alpha=erralpha,color=errcolor)+
+  geom_errorbar(aes(ymax=T_OD_Mean+T_OD_SD,ymin=T_OD_Mean-T_OD_SD),width=0,alpha=erralpha,color=errcolor)+
+  geom_point(color=pntcolor,size=1)+#,alpha=1
+  scale_x_continuous(breaks=seq(0,.35,by=.05),limits=c(0,0.35))+
+  scale_y_continuous(breaks=seq(0,.25,by=.05),limits=c(0,.25))+
+  geom_text(aes(label=ifelse(Gene %in% mrklist,as.character(Gene),'')),
+            hjust=-0.1, vjust=-0.1,size=5,colour = "red")+
+#   scale_colour_gradientn(colours = gradcols,trans = "log",
+#                          breaks=brks,limits=c(5,100),guide='legend',name=micname)+
+#   scale_size(range=c(1,6),breaks=brks,name=micname)+
+  ylab(expression(paste('E. coli growth OD600nm - 50 ',mu,'M 5FU')))+
+  xlab('E. coli growth OD600nm - Control')+
+  #ggtitle(expression(paste('E. coli growth in NGM 24hr - Control vs 50 ',mu,'M 5FU treatment')))+
+  guides(color=guide_legend(), size = guide_legend())
+baccleancor
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Control-Treatment_NGM_growth_simple.pdf",sep = ''),
+             width=5,height=4,
+             useDingbats=FALSE)
+
+
+
+
+
+
+#Group Significantly sensitive and resistant bacterial hits
+bacmic$BacSensitivity<-ifelse(bacmic$GT_Interaction<0 & bacmic$GT_FDR<0.05,'Synergistic',NA)
+bacmic$BacSensitivity<-ifelse(bacmic$GT_Interaction>0 & bacmic$GT_FDR<0.05,'Antagonistic',bacmic$BacSensitivity)
+bacmic$BacSensitivity<-factor(bacmic$BacSensitivity,levels=c('Synergistic','Antagonistic'),labels=c('Synergistic','Antagonistic'))
+
+
+fitmcor<-lm(GT_Interaction ~ MIC,data=bacmic)
+resmcor<-summary(fitmcor)
+resmcor
+resmcor$r.squared
+
+q95<-quantile(bacmic$MIC,0.95,na.rm=TRUE)[[1]]
+
+
+brks2<-c(1,5,10,25,50,100)
+sensrescol<-c("blue","green")
+pntcolor='grey70'
+
+
+MICcor<-ggplot(subset(bacmic,MIC>=5),aes(x=MIC,y=GT_Interaction))+
+  geom_abline(intercept=fitmcor$coefficients[[1]],slope=fitmcor$coefficients[[2]],alpha=0.5,color='red')+
+  geom_vline(aes(xintercept = q95),alpha=0.5,color='red')+
+  geom_errorbarh(aes(xmax=MIC+MIC_SD,xmin=MIC-MIC_SD),height=0,alpha=erralpha,color=errcolor)+
+  geom_errorbar(aes(ymax=GT_Interaction+GT_SE,ymin=GT_Interaction-GT_SE),width=0,alpha=erralpha,color=errcolor)+
+  geom_point(aes(colour=BacSensitivity),size=3,alpha=0.9)+#,alpha=1
+  scale_x_continuous(breaks=brks2,trans='log2')+
+  #scale_y_continuous(breaks=seq(0,.25,by=.05),limits=c(0,.25))+
+  geom_text(aes(label=ifelse(Gene %in% mrklist,as.character(Gene),'')),
+            hjust=-0.1, vjust=-0.1,size=5,colour = "red")+
+  scale_color_manual(values=sensrescol,na.value=pntcolor)+
+  xlab(expression(paste('MIC, ',mu,'M 5-FU')))+
+  ylab('KO - 5-FU interaction')+
+  ggtitle(expression(paste('E. coli growth in NGM 24hr - Control vs 50 ',mu,'M 5FU treatment')))+
+  guides(color=guide_legend(), size = guide_legend())
+MICcor
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/MIC_vs_GTinteraction.pdf",sep = ''),
+             width=6.5,height=5)
+
  
 
 bacmed<-melt(bacmic[,colnames(bacmic) %in% c('Gene','C_OD_Mean','T_OD_Mean','LB_22hr','MOPS_24hr','MOPS_48hr')],
@@ -247,11 +367,6 @@ bachist
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bac_growth_disribution.pdf",sep=''),width=9,height=9)
 
 
-
-#Group Significantly sensitive and resistant bacterial hits
-bacmic$BacSensitivity<-ifelse(bacmic$GT_Interaction<0 & bacmic$GT_FDR<0.05,'Synergistic',NA)
-bacmic$BacSensitivity<-ifelse(bacmic$GT_Interaction>0 & bacmic$GT_FDR<0.05,'Antagonistic',bacmic$BacSensitivity)
-bacmic$BacSensitivity<-factor(bacmic$BacSensitivity,levels=c('Synergistic','Antagonistic'),labels=c('Synergistic','Antagonistic'))
 
 
 
@@ -352,8 +467,8 @@ mbcC2<-ggplot(bacmic,aes(y=MIC,x=C_OD_Mean,color=BacSensitivity))+
 #             hjust=-0.1, vjust=-0.75,size=txtsize,alpha=txtalpha,color=txtcolor)+
   geom_text(aes(label=ifelse(Gene %in% mrkgenes,as.character(Gene),'')),
             hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=mrkcolor,fontface = "bold")+
-  geom_text(aes(label=ifelse(Gene %in% outnamesC,as.character(Gene),'')),
-            hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=outcolor,fontface = "bold")+
+#   geom_text(aes(label=ifelse(Gene %in% outnamesC,as.character(Gene),'')),
+#             hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=outcolor,fontface = "bold")+
   scale_x_continuous(breaks=seq(0,0.35,by=0.05),limits=c(0,0.35))+
   scale_y_continuous(breaks=seq(0,125,by=25),limits=c(-12.5,112.5))+
   scale_color_manual(values=sensrescol,na.value=pntcolor)+
@@ -450,8 +565,8 @@ mbcD2<-ggplot(bacmic,aes(y=MIC,x=T_OD_Mean,color=BacSensitivity))+
 #             hjust=-0.1, vjust=-0.75,size=txtsize,alpha=txtalpha,color=txtcolor)+
   geom_text(aes(label=ifelse(Gene %in% mrkgenes,as.character(Gene),'')),
             hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=mrkcolor,fontface = "bold")+
-  geom_text(aes(label=ifelse(Gene %in% outnamesD,as.character(Gene),'')),
-            hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=outcolor,fontface = "bold")+
+#   geom_text(aes(label=ifelse(Gene %in% outnamesD,as.character(Gene),'')),
+#             hjust=-0.1, vjust=-0.75,size=mrksize,alpha=mrkalpha,color=outcolor,fontface = "bold")+
   labs(color='Knockout\ninteraction with 5-FU')+
   scale_y_continuous(breaks=seq(0,100,by=25),limits=c(-12.5,112.5))+
   scale_x_continuous(breaks=seq(0,0.35,by=0.05),limits=c(0,0.35))+
@@ -561,6 +676,44 @@ dev.copy2pdf(device=cairo_pdf,
 
 bacmicLB<-read.table(paste(ddir,'/MICs_and_bacterial_growth_with_Nassos_and_yjjG.csv',sep='')
                      ,sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+
+bacmicLBw<-bacmicLB[,c('ECK','Gene','Plate','Well','JW_id','bno','EG','GI','MIC','MIC_SD',
+                       'GT_Interaction','GT_Interaction_norm','GT_SD','GT_SE','GT_p.value','GT_FDR','X5FU_37C')]
+
+bacmicLBw<-rename(bacmicLBw,c('X5FU_37C'='GT_Interaction_LB'))
+
+bacmicLBw<-subset(bacmicLBw,!is.na(GT_Interaction) & !is.na(GT_Interaction_LB))
+
+
+Metsexpl<-read.table(paste(ddir,'/MICs_column_explanation.csv',sep=''),
+                     sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+
+explst<-subset(Metsexpl,Column %in% colnames(bacmicLBw))
+
+explst<-explst[match(colnames(bacmicLBw),explst$Column),]
+
+
+
+#write.xlsx2(explrd, file=paste(ddir,'/Metabolomics_Statistics.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
+#write.xlsx2(allcompclean, file=paste(ddir,'/Metabolomics_Statistics.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE)#showNA=FALSE
+
+
+write.xlsx2(explst, file=paste(ddir,'/Media_comparison.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
+write.xlsx2(bacmicLBw, file=paste(ddir,'/Media_comparison.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE)#showNA=FALSE
+
+
+# #Update manually
+write.xlsx2(explst, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S5.xlsx',
+            sheetName="Media_comparison_Readme",row.names = FALSE,showNA=FALSE,append=TRUE)
+write.xlsx2(bacmicLBw, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S5.xlsx',
+            sheetName="Media_comparison", append=TRUE,row.names = FALSE)#showNA=FALSE
+# 
+
+
+
+
+
+
 
 
 

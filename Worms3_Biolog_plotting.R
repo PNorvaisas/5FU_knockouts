@@ -187,7 +187,7 @@ BiologNGM+
 dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Scatter_Control|Treatment_NGMsubs.pdf",sep = ''),
              width=7,height=4)
 
-BiologODI<-ggplot(allwb,aes(x=ODInt_C_Mean,y=ODInt_T_Mean))+
+BiologODI<-ggplot(clean,aes(x=ODInt_C_Mean,y=ODInt_T_Mean))+
   geom_abline(aes(intercept=ODIb,slope=ODIa),alpha=0.5,color='red')+
   geom_errorbarh(aes(xmax=ODInt_C_Mean+ODInt_C_SD,xmin=ODInt_C_Mean-ODInt_C_SD),height=0,alpha=erralpha,color=errcolor)+
   geom_errorbar(aes(ymax=ODInt_T_Mean+ODInt_T_SD,ymin=ODInt_T_Mean-ODInt_T_SD),width=0,alpha=erralpha,color=errcolor)+
@@ -219,14 +219,96 @@ dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Bacteria_Scatter_ControlvsTreatm
              width=7,height=4)
 
 #Relationship between W_median and MT_Interaction
-ggplot(allwb,aes(x=as.factor(W_Median),y=MT_Interaction))+geom_boxplot()
+ggplot(clean,aes(x=as.factor(W_Median),y=MT_Interaction))+geom_boxplot()
 
 
-#Relationship between W_median and MT_Interaction
-ggplot(allwb,aes(x=as.factor(W_Median),y=NGMDiff_C_Mean))+geom_boxplot()
+# clean<-allwb
+# allwbt$W_Median<-as.factor(allwbt$W_Median)
 
 
-ggplot(allwb,aes(y=W_Median,x=NGMDiff_C_Mean))+geom_point()
+
+ggplot(clean,aes(x=W_Mean,y=NGMDiff_C_Mean))+geom_point()+stat_smooth(method='lm')
+
+fitWM<-lm(NGMDiff_C_Mean~W_Mean,allwb)
+summary(fitWM)
+resWM<-summary(fitWM)
+resWM$r.squared
+
+is.between <- function(x, a, b) {
+  x > a & x <= b
+}
+
+
+#Boxplots
+clean$W_Group<-'0'
+clean$W_Group<-ifelse(is.between(clean$W_Median, 0, 1),'1',clean$W_Group)
+clean$W_Group<-ifelse(is.between(clean$W_Median, 1, 2),'2',clean$W_Group)
+clean$W_Group<-ifelse(is.between(clean$W_Median, 2, 3),'3',clean$W_Group)
+clean$W_Group<-ifelse(is.between(clean$W_Median, 3, 4),'4',clean$W_Group)
+
+
+Wstat<-ddply(clean,.(W_Group),summarise,Count=length(UniqueName),Median=median(NGMDiff_C_Mean),
+             Mean=mean(NGMDiff_C_Mean),SD=sd(NGMDiff_C_Mean))
+
+cleans<-merge(clean,Wstat,by='W_Group',all=TRUE)
+
+sizecolours<-c('yellow','red','blue')
+
+sizecol2<-c('brown','darkgoldenrod','lightgoldenrod','orange','red')
+
+wmedname<-'Number of compounds'
+
+cc <- scales::seq_gradient_pal('black','orange')(seq(0,1,length.out=5))
+
+ggplot(cleans,aes(x=as.factor(W_Group),y=NGMDiff_C_Mean))+
+  coord_flip()+
+  ylim(-1,2)+
+  stat_boxplot(aes(fill=as.factor(Count)))+
+ # scale_fill_manual(values=sizecol2)+
+  scale_fill_manual( values=sizecol2)+
+#   scale_fill_gradientn(colours = sizecolours,
+#                        breaks=c(0,25,50,100,200),
+#                        limits=c(0,200),guide="legend",
+#                        name=wmedname)+#breaks=c(0,1,2,3,4),limits=c(0,4),trans = "log"
+  # guides(fill=guide_legend())+
+  labs(fill='Number of\ncompounds')+
+  ylab('E. coli growth logFC (NGM+Metabolite/NGM) - Control')+
+  xlab('C. elegans phenotype score median')
+dev.copy2pdf(device=cairo_pdf,file=paste(odir,"/Worm-p_vs_BacGrowth.pdf",sep = ''),
+             width=6,height=4)
+
+#middle=Mean,lower=Mean-SD,upper=Mean+SD,ymin=Mean-SD*1.96,ymax=Mean+SD*1.96,
+
+
+
+fitW<-lm(NGMDiff_C_Mean~W_Group,clean)
+summary(fitW)
+
+
+#Linear
+ggplot(allwb,aes(x=W_Mean,y=NGMDiff_T_Mean))+geom_point()+stat_smooth(method='lm')
+
+fitWMT<-lm(NGMDiff_T_Mean~W_Mean,allwb)
+summary(fitWMT)
+
+#Boxplots
+ggplot(allwb,aes(x=as.factor(W_Median),y=NGMDiff_T_Mean))+geom_boxplot()
+#+coord_flip()
+
+fitWT<-lm(NGMDiff_T_Mean~W_Median,allwbt)
+summary(fitWT)
+
+
+
+
+
+
+
+#Relationship between W_median and Bacterial growth
+
+
+
+#ggplot(allwb,aes(y=W_Median,x=NGMDiff_C_Mean))+geom_point()
 
 ggplot(allwb,aes(x=as.factor(W_Median),y=NGMDiff_T_Mean))+geom_boxplot()
 
