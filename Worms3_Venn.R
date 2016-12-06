@@ -6,7 +6,6 @@ library('tidyr')
 library('Vennerable')
 library('quantreg')
 
-library('splitstackshape')
 library('VennDiagram')
 library('splitstackshape')
 library(xlsx)
