@@ -96,6 +96,16 @@ def readxls(ifile,tabnum=0):
 	return sheet
 
 
+def readtext(ifile):
+	f=open(ifile,'r')
+	sheet=[]
+	for l in f:
+		row=[cell.strip() for cell in l.replace('\t',',').split(',')] #re.split(r"[,\t]+",l.replace('\t',','))
+		row=[numerize(cell) for cell in row]
+		sheet.append(row)
+	f.close()
+	return sheet
+
 
 def writecsv(data,ofile,delim='\t'):
 	f=open(ofile,'wb')
@@ -203,6 +213,39 @@ for ifile in ifiles:
 
 
 writecsv(output,'NGM_Keio_Rep1.csv',delim=',')
+
+
+
+#Find UAL data
+os.chdir('/Users/Povilas/Projects/2015-Metformin/GFP_reporters/UAL_screen')
+
+
+ifolders=glob.glob('*')
+
+
+output=[]
+header=['Type','Replicate','Plate','Well','Reading','Value']
+output.append(header)
+for fold in ifolders:
+	tp,rep=fold.split('_')
+	ifiles=glob.glob(fold+'/*')
+	for ifl in ifiles:
+		print ifl
+		plate=ifl.split(' ')[1].replace('.txt','')
+		sheet=readtext(ifl)
+		for ln in sheet:
+			if ln[0]=='OD:595':
+				reading='OD'
+			if ln[0]=='GFP:488':
+				reading='GFP'
+			if ln[0] in ['A','B','C','D','E','F','G','H']:
+				r=ln[0]
+				for c,val in enumerate(ln[1:13]):
+					well='{}{}'.format(r,c+1)
+					output.append([tp,rep,plate,well,reading,val])
+writecsv(output,'UAL_all_data.csv',delim=',')
+
+
 
 
 
