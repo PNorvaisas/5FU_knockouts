@@ -10,7 +10,7 @@ library(xlsx)
 library(car)
 library('rafalib')
 library(multcomp)
-library('contrast')
+library(contrast)
 
 lmsum<-function(m){fres<-summary(m)
 l <- list(b = as.double(coef(m)[1], digits = 2),
