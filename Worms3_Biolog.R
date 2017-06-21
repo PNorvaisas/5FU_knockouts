@@ -1,14 +1,14 @@
-library('ggplot2')
-library('gplots')
-library('plyr')
-library('reshape2')
-library('tidyr')
-library('gtools')
+library(ggplot2)
+library(gplots)
+library(plyr)
+library(reshape2)
+library(tidyr)
+library(gtools)
 
 library(sp)
 library(xlsx)
 library(car)
-library('rafalib')
+library(rafalib)
 library(multcomp)
 library(contrast)
 
@@ -53,7 +53,7 @@ make.coef.frame<-function(res,len){
 
 trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 
-setwd("~/Projects/2015-Metformin/Worms")
+setwd("~/Dropbox/Projects/2015-Metformin/5FU_projects")
 
 theme_set(theme_light())
 
@@ -117,6 +117,7 @@ write.csv(sumsidedw,paste(ddir,'/Biolog_Bacteria_Summary_averages_by-treatment.c
 
 #Worm data
 wormd<-read.table('./Biolog/Worm_data/Biolog_Worm_linearised.csv',sep=',',quote = "\"",header=TRUE)
+
 bioinfo<-read.table('../Biolog_results/Biolog_metabolites_Ecocyc.csv',sep=',',quote = "\"",header=TRUE)
 bioinfo$Metabolite<-trim(bioinfo$Metabolite)
 
@@ -321,12 +322,15 @@ ggplot(cf,aes(x=w1,y=w3a,color=PlateGroup))+geom_point()+
 
 ggplot(cf,aes(x=w3a,fill=PlateGroup))+geom_histogram(position='identity',alpha=0.5)
 
+
 #AdjustPM1&PM2A
 names12<-subset(cf,PlateGroup=='PM1&PM2A')$UniqueName
 allcontr12<-paste("`TypeT:UniqueName",names12, "`-(", a12,")*`UniqueName",names12,"`=",b12,sep='')#,b12
 adjconf12<-glht(fit12,linfct=allcontr12)
 adjres12<-summary(adjconf12,test = adjusted("none"))
 #adjres122<-summary(adjconf12,test = adjusted("fdr"))
+
+
 
 #Adjust PM5
 names5<-subset(cf,PlateGroup=='PM5')$UniqueName
