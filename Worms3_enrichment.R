@@ -243,6 +243,9 @@ circms$Coverage_BacAntagonistic<-circms$Size_BacAntagonistic/circms$Size_MICo5
 
 
 circms$Enrichment_MIC_p.value<-phyper(circms$Size_MICo5-1,hits,tot-hits,circms$Size_KeioS,lower.tail = FALSE)
+
+
+
 circms$Enrichment_MIC_FDR<-p.adjust(circms$Enrichment_MIC_p.value,method = 'fdr')
   
 circms$Enrichment_BacInt_p.value<-phyper(circms$Size_BacInteracting-1,bacInt,hits-bacInt,circms$Size_MICo5,lower.tail = FALSE)
