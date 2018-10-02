@@ -18,10 +18,12 @@ theme_update(panel.background = element_rect(colour = "black"),
              axis.text = element_text(colour = "black"))
 
 
+setwd('~/Dropbox/Projects/2015-Metformin/5FU_knockouts/')
+
 
 #Output folder:
-odir<-'Figures_final'
-ddir<-'Data_final'
+ddir<-'Summary_Keio'
+
 
 
 lmsum<-function(m){fres<-summary(m)
@@ -35,20 +37,23 @@ return(l)
 trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 
 #Read Keio info table with identifiers
-keioinfo<-read.table('../Keio_library/Keio_library_fully_annotated.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+keioinfo<-read.table('../Annotations/Ecoli/Keio_library/Keio_library_fully_annotated.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 keioinfo$X<-NULL
 keioinfo<-subset(keioinfo,!Plate %in% c('91','93','95'))
 
 
 #Get bacterial annotation
+#Can't find this file!
+
 bacannot<-read.table('Data_v4/Plate_annotations.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 bacannot$X<-NULL
 
+
 #Get 4th screen
-bac41<-read.table('4th_bacterial_screen_batch-1/4th_screen_bacterial_linear_1.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+bac41<-read.table('Keio_Bacterial_growth_screen/4th_bacterial_screen_batch-1/4th_screen_bacterial_linear_1.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 bac41<-rename(bac41, c("Plate"="Nplate", "Well"="NWell",'OD'='OD_raw'))
 
-bac42<-read.table('4th_bacterial_screen_batch-2/4th_screen_bacterial_linear_2.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+bac42<-read.table('Keio_Bacterial_growth_screen/4th_bacterial_screen_batch-2/4th_screen_bacterial_linear_2.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 bac42<-rename(bac42, c("Plate"="Nplate", "Well"="NWell",'OD'='OD_raw'))
 
 bac42[bac42$Replicate==3,'Replicate']<-5
@@ -56,7 +61,7 @@ bac42[bac42$Replicate==1,'Replicate']<-3
 bac42[bac42$Replicate==2,'Replicate']<-4
 bac42[bac42$Replicate==5,'Replicate']<-2
 
-bac4f<-read.table('4th_bacterial_screen_fill/4th_screen_bacterial_linear_fill.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+bac4f<-read.table('Keio_Bacterial_growth_screen/4th_bacterial_screen_fill/4th_screen_bacterial_linear_fill.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 bac4f<-rename(bac4f, c("Plate"="Nplate", "Well"="NWell",'OD'='OD_raw'))
 
 

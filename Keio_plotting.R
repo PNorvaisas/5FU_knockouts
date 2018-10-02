@@ -14,7 +14,9 @@ theme_update(panel.background = element_rect(colour = "black"),
       axis.text = element_text(colour = "black"))
 
 
-setwd("~/Projects/2015-Metformin/Worms")
+setwd("~/Dropbox/Projects/2015-Metformin/5FU_knockouts/")
+
+
 
 #Vennerable installation: install.packages("Vennerable", repos="http://R-Forge.R-project.org")
 
@@ -102,11 +104,10 @@ length(subset(bacmic,MIC>5 & Gene!='WT')$Gene)
 
 #B6 scheme
 
-B6dat<-read.table('~/Projects/B-D-H paper/Povilas/B6_genes.csv',sep=',',header=TRUE)
+B6dat<-read.table('Annotations/B6_genes.csv',sep=',',header=TRUE)
 
 B6val<-merge(B6dat,bacmic[,c('Gene','MIC')],by='Gene',all.x=TRUE)
 
-B6dir<-'~/Projects/B-D-H paper/Povilas/'
 
 #,guide='legend'
 brks<-c(1,2.5,5,10,25,50,100)
@@ -116,8 +117,11 @@ B6<-ggplot(B6val,aes(x=X,y=Y,color=MIC))+
   scale_colour_gradientn(colours = gradcols,trans = "log",
                          breaks=brks,limits=c(1,100),na.value = "purple")
 B6
-dev.copy2pdf(device=cairo_pdf,file=paste(B6dir,"/B6_coloured.pdf",sep = ''),
+dev.copy2pdf(device=cairo_pdf,file=paste(ddir,"/B6_coloured.pdf",sep = ''),
              width=6.5,height=4)
+
+
+
 
 #Explanation
 bacgrow<-read.table(paste(ddir,'/Bacterial_growth.csv',sep=''),sep=',',header=TRUE,stringsAsFactors = FALSE)

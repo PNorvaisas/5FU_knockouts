@@ -5,13 +5,12 @@ library('reshape2')
 library(tidyr)
 library(BSDA)
 library(xlsx)
-#library(quantreg)
-#library(ellipse)
+
+setwd('~/Dropbox/Projects/2015-Metformin/5FU_knockouts/')
 
 
 #Output folder:
-odir<-'Figures_final'
-ddir<-'Data_final'
+ddir<-'Summary_Keio'
 
 
 lmsum<-function(m){fres<-summary(m)
@@ -26,21 +25,21 @@ trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 
 
 
-evalmic=function(m){
-  print(m[1][1])
-  m<-as.numeric(m)
-  mic=1
-  if (!is.na(m[[3]]) & m[[3]]>0) {
-    mic=2.5
-  }
-  if (!is.na(m[[4]]) & m[[4]]>0) {
-    mic=5
-  }
-  if (!is.na(m[[5]]) & m[[5]]>0) {
-    mic=10
-  }
-  return(mic)
-}
+# evalmic=function(m){
+#   print(m[1][1])
+#   m<-as.numeric(m)
+#   mic=1
+#   if (!is.na(m[[3]]) & m[[3]]>0) {
+#     mic=2.5
+#   }
+#   if (!is.na(m[[4]]) & m[[4]]>0) {
+#     mic=5
+#   }
+#   if (!is.na(m[[5]]) & m[[5]]>0) {
+#     mic=10
+#   }
+#   return(mic)
+# }
 
 evalmic2=function(all){
   for (i in rownames(all)){
@@ -62,7 +61,7 @@ evalmic2=function(all){
 
 
 #Read Keio info table with identifiers
-keioinfo<-read.table('../Keio_library/Keio_library_fully_annotated.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+keioinfo<-read.table('../Annotations/Ecoli/Keio_library/Keio_library_fully_annotated.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 keioinfo$X<-NULL
 keioinfo<-subset(keioinfo,!Plate %in% c('91','93','95'))
 
@@ -71,7 +70,7 @@ keioinfo<-subset(keioinfo,!Plate %in% c('91','93','95'))
 
 
 #Get data that's already scored
-scr1r<-read.table('Primary_screen_PN_clean_fixed.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+scr1r<-read.table('Keio_Worm_Development/Primary_screen_PN_clean_fixed.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 
 #scr1r<-subset(scr1r, ! Gene %in% c('XXXXXXX','no bact','empty','',NA))
 scr1r$Plate<-scr1r$Keio.Plate.no.
@@ -89,7 +88,7 @@ scr1r[scr1r$Gene %in% c('XXXXXXX','no bact','empty',''),'Gene']<-NA
 
 
 ##Apply bandage
-timfix<-read.csv('Tim_fixed_scr1.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+timfix<-read.csv('Keio_Worm_Development/Tim_fixed_scr1.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 timfix$Action<-NULL
 timfix$Tim.s.comments<-NULL
 timfix$Index<-apply(timfix[,c('Plate','Well')],1,paste,collapse='-')
@@ -104,7 +103,7 @@ scr1m$Measure<-as.character(scr1m$Measure)
 scr1m$Score<-as.character(scr1m$Score)
 
 #Secondary screen
-scr2<-read.table('Secondary_screen_PN_new.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
+scr2<-read.table('Keio_Worm_Development/Secondary_screen_PN_new.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
 scr2$Starving<-as.factor(scr2$Starving)
 #Fix Gene-location relationships. Well must come first!
 scr2[scr2$Gene=='yedN','Plate']<-'31'
@@ -123,8 +122,8 @@ scr2m<-subset(scr2m,!Gene %in% c('no bacteria','empty'))
 
 
 #Supplemented screen 3
-scr3fix<-read.table('3rd_screen_location_fix.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
-scr3Scores<-read.table('3rd_screen_Scores.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
+scr3fix<-read.table('Keio_Worm_Development/3rd_screen_location_fix.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
+scr3Scores<-read.table('Keio_Worm_Development/3rd_screen_Scores.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
 scr3Scores<-rename(scr3Scores, c("Keio.Plate.no."="Plate", "Position"="Well", "Well"="NWell"))
 
 #Fix mistakes with gene-location mismatches
@@ -153,7 +152,7 @@ scr3Sm[scr3Sm$Score %in% c('1'),'Score']<-'3'
 
 
 #3rd screen MIC values all
-scr3Mics<-read.table('3rd_screen_MICs.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
+scr3Mics<-read.table('Keio_Worm_Development/3rd_screen_MICs.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors = FALSE)
 scr3Mics<-rename(scr3Mics, c("Keio.Plate.no."="Plate", "Position"="Well", "Well"="NWell"))
 scr3Mics<-merge(scr3Mics,scr3fix[,c('Plate','Well','Right_gene')],by=c('Plate','Well'),all.x=TRUE)
 #Fix mistakes with gene-location missmatches
@@ -275,6 +274,8 @@ conc<-merge(alls,keioinfo,by=c('Gene','Plate','Well'),all.x=TRUE,all.y=TRUE)
 
 #15 excluded due to prior knowledge of poor growth
 nodata<-subset(conc,is.na(MIC) & !Gene %in% c('present','WT',NA))
+
+
 write.csv(nodata,paste(ddir,'/Worms_nodata.csv',sep=''),row.names = FALSE)
 
 
@@ -339,7 +340,7 @@ allinf<-allinfr[,! colnames(allinfr) %in% c('Gene.y','Row','Column','Comment','H
 
 #Merge with Keio reference growth
 
-keio<-read.table('Keio_growth.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+keio<-read.table('Keio_Bacterial_growth_screen/Keio_growth.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 #keio<-keio[,colnames(keio) %in% c('Gene','LB_22hr','MOPS_24hr','MOPS_48hr')]
 keio[is.na(keio)]<-NA
 #keio<-subset(keio,!LB_22hr=='N.A.' & !MOPS_24hr=='N.A.' & !MOPS_48hr=='N.A.')
@@ -353,7 +354,6 @@ kduplicates<-subset(keio,Gene %in% kdupl & Gene!='none')
 #Merge with Keio library data
 mics<-merge(allinf,keio,by.x=c('JW_id','ECK','Gene'),by.y=c('JW.id','ECK.number','Gene'),all.x=TRUE)
 mics[is.na(mics$LB_22hr),c('LB_22hr','MOPS_24hr','MOPS_48hr')]<-keio[match(subset(mics,is.na(LB_22hr))$Gene,keio$Gene),c('LB_22hr','MOPS_24hr','MOPS_48hr')]
-
 
 
 write.csv(mics,paste(ddir,'/Worm_MICs.csv',sep=''),row.names = FALSE)

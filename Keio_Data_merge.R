@@ -10,12 +10,17 @@ library(xlsx)
 
 
 #Output folder:
-odir<-'Figures_final'
-ddir<-'Data_final'
+odir<-'Summary_Keio'
+ddir<-'Summary_Keio'
+
+
+
+setwd('~/Dropbox/Projects/2015-Metformin/5FU_knockouts/')
+
 
 
 #Read Keio info table with identifiers
-keioinfo<-read.table('../Keio_library/Keio_library_fully_annotated.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+keioinfo<-read.table('../Annotations/Ecoli/Keio_library/Keio_library_fully_annotated.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 keioinfo$X<-NULL
 keioinfo<-subset(keioinfo,!Plate %in% c('91','93','95'))
 rdupl<-as.factor(unique(keioinfo[which(duplicated(keioinfo$Gene)),]$Gene))
@@ -29,7 +34,7 @@ mics<-read.table(paste(ddir,'/Worm_MICs.csv',sep=''),sep=',',quote = '"',header 
 colnames(mics)<-gsub('X','',colnames(mics))
 
 
-bacall<-read.table(paste(ddir,'/Bacterial_growth_summary_with_yjjG.csv',sep=''),sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+#bacall<-read.table(paste(ddir,'/Bacterial_growth_summary_with_yjjG.csv',sep=''),sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 
 bacall<-read.table(paste(ddir,'/Bacterial_growth_summary.csv',sep=''),sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 
@@ -46,8 +51,8 @@ bacmict<-merge(mics,bacall,id=c('Gene','Plate','Well'),all.x = TRUE)
 
 
 #Remove
-keioundis<-read.table('../Keio_library/Keio_undisrupted.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
-rmdev<-read.table('Keio_development_delays.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+keioundis<-read.table('../Annotations/Ecoli/Keio_library/Keio_undisrupted.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
+rmdev<-read.table('Keio_Worm_Development/Keio_development_delays.csv',sep=',',quote = '"',header = TRUE,stringsAsFactors=FALSE)
 
 
 
@@ -129,9 +134,6 @@ length(allgenes)+1==length(bacmic$Gene)+length(remset$Gene)
 poorgrowth
 
 
-
-
-
 bacmic<-bacmic[,setdiff(colnames(bacmic),c('0','1','2.5','5','UniACC'))] #,'EG','GI'
 
 colnames(bacmic)
@@ -160,11 +162,11 @@ explrd<-explrd[match(colnames(bacmicw2),explrd$Column),]
 write.xlsx2(explrd, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
 write.xlsx2(bacmicw2, file=paste(ddir,'/MICs_and_bacterial_growth-Complete.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
-write.xlsx2(explrd, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
-            sheetName="Readme_All-data",row.names = FALSE,showNA=FALSE,append = TRUE)
-write.xlsx2(bacmicw2, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
-            sheetName="All-data", append=TRUE,row.names = FALSE,showNA=FALSE)
-
+# write.xlsx2(explrd, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
+#             sheetName="Readme_All-data",row.names = FALSE,showNA=FALSE,append = TRUE)
+# write.xlsx2(bacmicw2, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
+#             sheetName="All-data", append=TRUE,row.names = FALSE,showNA=FALSE)
+# 
 
 #Knockouts removed from screen
 
@@ -177,11 +179,11 @@ write.csv(remsetw,paste(ddir,'/All_removed_from_screen.csv',sep=''),row.names = 
 write.xlsx2(explrm, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), sheetName="Readme",row.names = FALSE,showNA=FALSE)
 write.xlsx2(remsetw, file=paste(ddir,'/All_removed_from_screen.xlsx',sep=''), sheetName="Data", append=TRUE,row.names = FALSE,showNA=FALSE)
 
-
-write.xlsx2(explrm, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
-            sheetName="Readme_Removed",row.names = FALSE,showNA=FALSE,append = TRUE)
-write.xlsx2(remsetw, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
-            sheetName="Removed", append=TRUE,row.names = FALSE,showNA=FALSE)
+# 
+# write.xlsx2(explrm, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
+#             sheetName="Readme_Removed",row.names = FALSE,showNA=FALSE,append = TRUE)
+# write.xlsx2(remsetw, file='/Users/Povilas/Projects/B-D-H paper/First submission MS files/tables/Scott et al_Table S2.xlsx',
+#             sheetName="Removed", append=TRUE,row.names = FALSE,showNA=FALSE)
 
 
 
